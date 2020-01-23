@@ -6,6 +6,9 @@ from time import sleep
 import os
 import time
 
+from pynput.keyboard import Key, Listener
+
+
 Point = namedtuple('Point', ['x', 'y'])
 
 def check_collision(snake):
@@ -116,14 +119,13 @@ def update_direction(d):
    elif last_direction == 'up' and d == 'down':
       is_invalid_move = True
    elif last_direction == 'down' and d == 'up':
-      last_direction = True
+      is_invalid_move = True
 
    if is_invalid_move:
       direction.append(last_direction)
    else:
       direction.append(d)
 
-from pynput.keyboard import Key, Listener
 def control_direction(key):
    d = None
    if key == Key.left:
