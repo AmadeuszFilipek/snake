@@ -77,11 +77,22 @@ update_grid(snake, grid, apple)
 print_(grid)
 
 def update_direction(d):
-   last_dir = direction.popleft()
-   # do not allow to turn 180 degrees
-   
+   last_direction = direction.popleft()
+   is_invalid_move = False
 
-   direction.append(d)
+   if last_direction == 'right' and d == 'left':
+      is_invalid_move = True
+   elif last_direction == 'left' and d == 'right':
+      is_invalid_move = True
+   elif last_direction == 'up' and d == 'down':
+      is_invalid_move = True
+   elif last_direction == 'down' and d == 'up':
+      last_direction = True
+
+   if is_invalid_move:
+      direction.append(last_direction)
+   else:
+      direction.append(d)
 
 from pynput.keyboard import Key, Listener
 def control_direction(key):
