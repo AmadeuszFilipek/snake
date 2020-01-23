@@ -7,7 +7,13 @@ import os
 
 Point = namedtuple('Point', ['x', 'y'])
 
-def advance(snake, direction):
+def gets_apple(snake, apple):
+   snake_head = snake[-1]
+   if snake_head.x == apple.x and snake_head.y == apple_y:
+      return True
+   return False
+
+def advance(snake, direction, apple):
    
    last_point = snake[-1]
    if direction == 'right':
@@ -33,7 +39,8 @@ def advance(snake, direction):
       new_point = Point(new_point.x, 0)
 
    snake.append(new_point)
-   snake.popleft()
+   if not gets_apple(snake, apple):
+      snake.popleft()
 
 def update_grid(snake, grid, apple):
    for i,j in it.product(range(len(grid)), range(len(grid))):
@@ -66,7 +73,6 @@ snake_length = 3
 
 direction = deque(['right'])
 
-
 snake = deque([
    Point(x=0, y=0), 
    Point(x=0, y=1),
@@ -96,6 +102,7 @@ def update_direction(d):
 
 from pynput.keyboard import Key, Listener
 def control_direction(key):
+   d = None
    if key == Key.left:
       d = 'left'
    elif key == Key.right:
@@ -104,13 +111,14 @@ def control_direction(key):
       d = 'up'
    elif key == Key.down:
       d = 'down'
-   update_direction(d)
+   if d is not None:
+      update_direction(d)
 
 # main game loop
 try:
    with Listener(on_press=control_direction):
       while True:
-         advance(snake, direction[0])
+         advance(snake, direction[0], apple)
          update_grid(snake, grid, apple)
          print_(grid)
          sleep(0.1)
