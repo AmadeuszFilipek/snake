@@ -7,6 +7,17 @@ import os
 
 Point = namedtuple('Point', ['x', 'y'])
 
+def check_collision(snake):
+   snake_head = snake.pop()
+   collision = False
+   for p in snake:
+      if p.x == snake_head.x and p.y == snake_head.y:
+         collision = True
+         break
+
+   snake.append(snake_head)
+   return collision
+
 def gets_apple(snake, apple):
    snake_head = snake[-1]
    if snake_head.x == apple.x and snake_head.y == apple.y:
@@ -77,7 +88,8 @@ def print_(grid):
             print('_', end='')
          print('  ', end='')
       print('\n')
-   
+
+# game initial state
 grid_size = 20
 grid = [[0 for i in range(grid_size)] for _ in range(grid_size)]
 
@@ -125,15 +137,20 @@ def control_direction(key):
       update_direction(d)
 
 # main game loop
+game_is_lost = False
 try:
    with Listener(on_press=control_direction):
-      while True:
+      while not game_is_lost:
          does_get_apple = advance(snake, direction[0], apple)
          update_grid(snake, grid, apple)
          print_(grid)
          if does_get_apple:
             apple = generate_new_apple(snake)
+         game_is_lost = check_collision(snake)
          sleep(0.1)
          
 except KeyboardInterrupt:
    pass
+
+if game_is_lost:
+   print("Game over !!!")
