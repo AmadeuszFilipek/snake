@@ -4,6 +4,7 @@ from collections import deque, namedtuple
 from queue import Queue
 from time import sleep
 import os
+import time
 
 Point = namedtuple('Point', ['x', 'y'])
 
@@ -138,6 +139,8 @@ def control_direction(key):
 
 # main game loop
 game_is_lost = False
+points = 0
+time_of_start = time.time() 
 try:
    with Listener(on_press=control_direction):
       while not game_is_lost:
@@ -145,6 +148,7 @@ try:
          update_grid(snake, grid, apple)
          print_(grid)
          if does_get_apple:
+            points += 1
             apple = generate_new_apple(snake)
          game_is_lost = check_collision(snake)
          sleep(0.1)
@@ -152,5 +156,9 @@ try:
 except KeyboardInterrupt:
    pass
 
+time_of_finish = time.time()
+time_played = time_of_finish - time_of_start
 if game_is_lost:
-   print("Game over !!!")
+   print("\nGame over !!!")
+   print("Your score: {}".format(points))
+   print("Time played: {:.2f} s\n".format(time_played))
