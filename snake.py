@@ -9,9 +9,21 @@ Point = namedtuple('Point', ['x', 'y'])
 
 def gets_apple(snake, apple):
    snake_head = snake[-1]
-   if snake_head.x == apple.x and snake_head.y == apple_y:
+   if snake_head.x == apple.x and snake_head.y == apple.y:
       return True
    return False
+
+def generate_new_apple(snake):
+   apple_on_snake = True
+   
+   while apple_on_snake:
+      apple_x, apple_y = int(20 * rnd.random()), int(20 * rnd.random())
+
+      for p in snake:
+         if p.x == apple_x and p.y == apple_y:
+            continue
+      apple_on_snake = False
+   return Point(apple_x, apple_y)
 
 def advance(snake, direction, apple):
    
@@ -39,8 +51,11 @@ def advance(snake, direction, apple):
       new_point = Point(new_point.x, 0)
 
    snake.append(new_point)
-   if not gets_apple(snake, apple):
+   does_get_apple = gets_apple(snake, apple)
+   if not does_get_apple:
       snake.popleft()
+   
+   return does_get_apple
 
 def update_grid(snake, grid, apple):
    for i,j in it.product(range(len(grid)), range(len(grid))):
@@ -66,18 +81,13 @@ def print_(grid):
 grid_size = 20
 grid = [[0 for i in range(grid_size)] for _ in range(grid_size)]
 
-apple_x, apple_y = int(20 * rnd.random()), int(20 * rnd.random())
-apple = Point(apple_x, apple_y)
-
-snake_length = 3
-
 direction = deque(['right'])
-
 snake = deque([
    Point(x=0, y=0), 
    Point(x=0, y=1),
    Point(x=0, y=2)
 ])
+apple = generate_new_apple(snake)
 
 update_grid(snake, grid, apple)
 print_(grid)
@@ -118,10 +128,12 @@ def control_direction(key):
 try:
    with Listener(on_press=control_direction):
       while True:
-         advance(snake, direction[0], apple)
+         does_get_apple = advance(snake, direction[0], apple)
          update_grid(snake, grid, apple)
          print_(grid)
+         if does_get_apple:
+            apple = generate_new_apple(snake)
          sleep(0.1)
-
+         
 except KeyboardInterrupt:
    pass
