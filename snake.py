@@ -15,18 +15,18 @@ def random_direction(direction):
    options = ['left', 'right',  'straight']
    choice = rnd.choice(options)
    
-   index = DIRECTIONS.index(direction)
+   direction_id = DIRECTIONS.index(direction)
    if choice == 'left':
-      index - 1
+      direction_id -= 1
    elif choice == 'right':
-      index + 1
+      direction_id += 1
    
-   if index < 0:
-      index = 3
-   elif index > 3:
-      index = 0
+   if direction_id < 0:
+      direction_id = 3
+   elif direction_id > 3:
+      direction_id = 0
 
-   result = DIRECTIONS[index]
+   result = DIRECTIONS[direction_id]
    return result
 
 def check_collision(snake):
@@ -175,7 +175,7 @@ try:
          points += 1
          apple = generate_new_apple(snake)
       game_is_lost = check_collision(snake)
-      sleep(0.05)
+      sleep(0.01)
          
 except KeyboardInterrupt:
    pass
