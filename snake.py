@@ -8,8 +8,26 @@ import time
 
 from pynput.keyboard import Key, Listener
 
-
+DIRECTIONS = ['left', 'up', 'right', 'down']
 Point = namedtuple('Point', ['x', 'y'])
+
+def random_direction(direction):
+   options = ['left', 'right',  'straight']
+   choice = rnd.choice(options)
+   
+   index = DIRECTIONS.index(direction)
+   if choice == 'left':
+      index - 1
+   elif choice == 'right':
+      index + 1
+   
+   if index < 0:
+      index = 3
+   elif index > 3:
+      index = 0
+
+   result = DIRECTIONS[index]
+   return result
 
 def check_collision(snake):
    snake_head = snake.pop()
@@ -142,18 +160,22 @@ def control_direction(key):
 # main game loop
 game_is_lost = False
 points = 0
-time_of_start = time.time() 
+time_of_start = time.time()
+
+   # with Listener(on_press=control_direction):
+
+
 try:
-   with Listener(on_press=control_direction):
-      while not game_is_lost:
-         does_get_apple = advance(snake, direction[0], apple)
-         update_grid(snake, grid, apple)
-         print_(grid)
-         if does_get_apple:
-            points += 1
-            apple = generate_new_apple(snake)
-         game_is_lost = check_collision(snake)
-         sleep(0.1)
+   while not game_is_lost:
+      update_direction(random_direction(direction[0]))
+      does_get_apple = advance(snake, direction[0], apple)
+      update_grid(snake, grid, apple)
+      print_(grid)
+      if does_get_apple:
+         points += 1
+         apple = generate_new_apple(snake)
+      game_is_lost = check_collision(snake)
+      sleep(0.05)
          
 except KeyboardInterrupt:
    pass
