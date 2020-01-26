@@ -20,7 +20,10 @@ model.add(layers.Flatten())
 model.add(layers.Dense(4, activation='elu'))
 model.add(layers.Dense(3, activation='softmax'))
 
-# model.summary()
+model.summary()
+print("MODEL WEIGHTS")
+weights = model.get_weights()
+model.set_weights(weights)
 
 def predict_next_move(grid):
    prepared_grid = prepare_grid(grid)

@@ -126,23 +126,17 @@ def print_(grid):
          print('  ', end='')
       print('\n')
 
-# game initial state
-grid_size = 20
-grid = [[0 for i in range(grid_size)] for _ in range(grid_size)]
+def initialize_grid(grid_size=20):
+   grid = [[0 for i in range(grid_size)] for _ in range(grid_size)]
+   return grid
 
-direction = deque(['right'])
-snake = deque([
-   Point(x=0, y=0), 
-   Point(x=0, y=1),
-   Point(x=0, y=2)
-])
-apple = generate_new_apple(snake)
+def initalize_snake(length=5):
+   snake = deque()
+   for i in range(length):
+      snake.append(Point(x=0, y=i))
+   return snake
 
-update_grid(snake, grid, apple)
-print_(grid)
-
-def update_direction(d):
-   last_direction = direction.popleft()
+def update_direction(last_direction, d):
    is_invalid_move = False
 
    if last_direction == 'right' and d == 'left':
@@ -155,9 +149,9 @@ def update_direction(d):
       is_invalid_move = True
 
    if is_invalid_move:
-      direction.append(last_direction)
+      return last_direction
    else:
-      direction.append(d)
+      return d
 
 def control_direction(key):
    d = None
@@ -172,31 +166,40 @@ def control_direction(key):
    if d is not None:
       update_direction(d)
 
-# main game loop
-game_is_lost = False
-points = 0
-time_of_start = time.time()
+def play(display=True, step_time=0.01, max_moves=1000):
+   grid = initialize_grid()
+   snake = initalize_snake()
+   apple = generate_new_apple(snake)
+   direction = 'right'
+   game_is_lost = False
+   points = 0
+   moves = 0
 
-try:
-   while not game_is_lost:
-      new_move = net_predict_next_move(grid)
-      new_direction = move_to_direction(direction[0], new_move)
-      update_direction(new_direction)
-      does_get_apple = advance(snake, direction[0], apple)
-      update_grid(snake, grid, apple)
-      print_(grid)
-      if does_get_apple:
-         points += 1
-         apple = generate_new_apple(snake)
-      game_is_lost = check_collision(snake)
-      sleep(0.01)
-         
-except KeyboardInterrupt:
-   pass
+   # main game loop
+   try:
+      while not game_is_lost:
+         update_grid(snake, grid, apple)
+         if display: print_(grid)
 
-time_of_finish = time.time()
-time_played = time_of_finish - time_of_start
-if game_is_lost:
-   print("\nGame over !!!")
-   print("Your score: {}".format(points))
-   print("Time played: {:.2f} s\n".format(time_played))
+         new_move = net_predict_next_move(grid)
+         new_direction = move_to_direction(direction, new_move)
+         update_direction(direction, new_direction)
+         does_get_apple = advance(snake, direction, apple)
+
+         if does_get_apple:
+            points += 1
+            apple = generate_new_apple(snake)
+
+         game_is_lost = check_collision(snake)
+         sleep(step_time)
+         moves += 1
+
+         if moves > max_moves:
+            break
+
+   except KeyboardInterrupt:
+      pass
+
+   return points, moves
+
+
