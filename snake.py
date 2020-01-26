@@ -8,17 +8,32 @@ import time
 
 from pynput.keyboard import Key, Listener
 
+import neural_net as net
+
 DIRECTIONS = ['left', 'up', 'right', 'down']
+OPTIONS = ['left', 'right',  'straight']
+
 Point = namedtuple('Point', ['x', 'y'])
 
-def random_direction(direction):
-   options = ['left', 'right',  'straight']
-   choice = rnd.choice(options)
-   
-   direction_id = DIRECTIONS.index(direction)
-   if choice == 'left':
+def net_predict_next_move(grid):
+   distribution = net.predict_next_move(grid)
+   move = distribution_to_move(distribution)
+   return move
+
+def distribution_to_move(distribution):
+   direction_id = distribution.index(max(distribution))
+   move = OPTIONS[direction_id]
+   return move
+
+def random_move():
+   move = rnd.choice(OPTIONS)
+   return move
+
+def move_to_direction(previous_direction, move):
+   direction_id = DIRECTIONS.index(previous_direction)
+   if move == 'left':
       direction_id -= 1
-   elif choice == 'right':
+   elif move == 'right':
       direction_id += 1
    
    if direction_id < 0:
@@ -92,19 +107,19 @@ def advance(snake, direction, apple):
 
 def update_grid(snake, grid, apple):
    for i,j in it.product(range(len(grid)), range(len(grid))):
-      grid[i][j] = 0
+      grid[i][j] = [0]
    for p in snake:
-      grid[p.x][p.y] = 1
-   grid[apple.x][apple.y] = -1
+      grid[p.x][p.y] = [1]
+   grid[apple.x][apple.y] = [-1]
 
 def print_(grid):
    os.system('clear')
 
    for i in range(len(grid)):
       for j in range(len(grid)):
-         if grid[i][j] == -1:
+         if grid[i][j][0] == -1:
             print('x', end='')
-         elif grid[i][j] == 1:
+         elif grid[i][j][0] == 1:
             print('s', end='')
          else:
             print('_', end='')
@@ -162,12 +177,11 @@ game_is_lost = False
 points = 0
 time_of_start = time.time()
 
-   # with Listener(on_press=control_direction):
-
-
 try:
    while not game_is_lost:
-      update_direction(random_direction(direction[0]))
+      new_move = net_predict_next_move(grid)
+      new_direction = move_to_direction(direction[0], new_move)
+      update_direction(new_direction)
       does_get_apple = advance(snake, direction[0], apple)
       update_grid(snake, grid, apple)
       print_(grid)
