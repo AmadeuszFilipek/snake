@@ -10,20 +10,28 @@ import numpy as np
 # 4D tensor with shape: (batch, rows, cols, channels) if data_format is "channels_last".
 model = models.Sequential()
 model.add(layers.Conv2D(
-   8, (3, 3),
+   4, (2, 2),
    activation='elu',
-   input_shape=(20, 20, 1),
+   input_shape=(10, 10, 1),
    data_format='channels_last'))
 model.add(layers.MaxPooling2D((2, 2)))
-model.add(layers.Conv2D(4, (3, 3), activation='elu'))
+model.add(layers.Conv2D(3, (4, 4), activation='elu'))
 model.add(layers.Flatten())
-model.add(layers.Dense(4, activation='elu'))
+# model.add(layers.Dense(4, activation='elu'))
 model.add(layers.Dense(3, activation='softmax'))
 
+# model = models.Sequential()
+# model.add(layers.Dense(5, activation='relu',input_shape=(400,)))
+# model.add(layers.Dense(4, activation='relu'))
+# # model.add(layers.Dense(4, activation='elu'))
+# model.add(layers.Dense(3, activation='softmax'))
+
 model.summary()
-print("MODEL WEIGHTS")
-weights = model.get_weights()
-model.set_weights(weights)
+
+try:
+   model.load_weights('best_weights')
+except Exception as e:
+   print(e)
 
 def predict_next_move(grid):
    prepared_grid = prepare_grid(grid)
@@ -33,3 +41,10 @@ def predict_next_move(grid):
 def prepare_grid(grid):
    wrap_batches = np.array([grid]) # single batch
    return wrap_batches
+
+def get_model_weight_shapes():
+   weights = model.get_weights()
+   shapes = []
+   for layer_weights in weights:
+      shapes.append(layer_weights.shape)
+   return shapes

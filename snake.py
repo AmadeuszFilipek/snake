@@ -61,11 +61,12 @@ def gets_apple(snake, apple):
       return True
    return False
 
-def generate_new_apple(snake):
+def generate_new_apple(snake, grid):
+   grid_size = len(grid)
    apple_on_snake = True
    
    while apple_on_snake:
-      apple_x, apple_y = int(20 * rnd.random()), int(20 * rnd.random())
+      apple_x, apple_y = int(grid_size * rnd.random()), int(grid_size * rnd.random())
 
       for p in snake:
          if p.x == apple_x and p.y == apple_y:
@@ -73,7 +74,7 @@ def generate_new_apple(snake):
       apple_on_snake = False
    return Point(apple_x, apple_y)
 
-def advance(snake, direction, apple):
+def advance(snake, direction, apple, grid):
    
    last_point = snake[-1]
    if direction == 'right':
@@ -88,14 +89,14 @@ def advance(snake, direction, apple):
       raise ValueError("Invalid direction")
    
    # check new point for boundaries
-   # hardcoded for now
+   grid_size = len(grid)
    if new_point.x < 0:
-      new_point = Point(19, new_point.y)
-   elif new_point.x > 19:
+      new_point = Point(grid_size- 1, new_point.y)
+   elif new_point.x > grid_size - 1:
       new_point = Point(0, new_point.y)
    if new_point.y < 0:
-      new_point = Point(new_point.x, 19)
-   elif new_point.y > 19:
+      new_point = Point(new_point.x, grid_size - 1)
+   elif new_point.y > grid_size - 1:
       new_point = Point(new_point.x, 0)
 
    snake.append(new_point)
@@ -166,14 +167,15 @@ def control_direction(key):
    if d is not None:
       update_direction(d)
 
-def play(display=True, step_time=0.01, max_moves=1000):
-   grid = initialize_grid()
+def play(display=True, step_time=0.01, moves_to_lose=40):
+   grid = initialize_grid(grid_size=10)
    snake = initalize_snake()
-   apple = generate_new_apple(snake)
+   apple = generate_new_apple(snake, grid)
    direction = 'right'
    game_is_lost = False
    points = 0
    moves = 0
+   moves_without_apple = 0
 
    # main game loop
    try:
@@ -184,18 +186,21 @@ def play(display=True, step_time=0.01, max_moves=1000):
          new_move = net_predict_next_move(grid)
          new_direction = move_to_direction(direction, new_move)
          update_direction(direction, new_direction)
-         does_get_apple = advance(snake, direction, apple)
+         does_get_apple = advance(snake, direction, apple, grid)
 
          if does_get_apple:
             points += 1
-            apple = generate_new_apple(snake)
+            moves_without_apple = 0
+            apple = generate_new_apple(snake, grid)
 
          game_is_lost = check_collision(snake)
          sleep(step_time)
          moves += 1
+         moves_without_apple
 
-         if moves > max_moves:
-            break
+         if moves_without_apple >= moves_to_lose:
+            game_is_lost = True
+         
 
    except KeyboardInterrupt:
       pass
