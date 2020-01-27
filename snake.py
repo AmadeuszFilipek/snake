@@ -171,7 +171,7 @@ def control_direction(key):
    if d is not None:
       update_direction(d)
 
-def play(display=True, step_time=0.01, moves_to_lose=40):
+def play(display=True, step_time=0.01, moves_to_lose=20):
    grid = initialize_grid(grid_size=10)
    snake = initalize_snake()
    apple = generate_new_apple(snake, grid)
@@ -213,7 +213,7 @@ def play(display=True, step_time=0.01, moves_to_lose=40):
 
 
 if __name__ == "__main__":
-   play(display=True, step_time=0.01, moves_to_lose=40)
+   play(display=True, step_time=0.01)
 
 
 
