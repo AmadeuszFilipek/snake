@@ -111,6 +111,8 @@ def update_grid(snake, grid, apple):
       grid[i][j] = [0]
    for p in snake:
       grid[p.x][p.y] = [1]
+   snake_head = snake[-1]
+   grid[snake_head.x][snake_head.y] = [2]
    grid[apple.x][apple.y] = [-1]
 
 def print_(grid):
@@ -122,6 +124,8 @@ def print_(grid):
             print('x', end='')
          elif grid[i][j][0] == 1:
             print('s', end='')
+         elif grid[i][j][0] == 2:
+            print('S', end='')
          else:
             print('_', end='')
          print('  ', end='')
@@ -196,7 +200,7 @@ def play(display=True, step_time=0.01, moves_to_lose=40):
          game_is_lost = check_collision(snake)
          sleep(step_time)
          moves += 1
-         moves_without_apple
+         moves_without_apple += 1
 
          if moves_without_apple >= moves_to_lose:
             game_is_lost = True
@@ -206,5 +210,11 @@ def play(display=True, step_time=0.01, moves_to_lose=40):
       pass
 
    return points, moves
+
+
+if __name__ == "__main__":
+   play(display=True, step_time=0.01, moves_to_lose=40)
+
+
 
 
