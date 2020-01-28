@@ -15,6 +15,65 @@ OPTIONS = ['left', 'right',  'straight']
 
 Point = namedtuple('Point', ['x', 'y'])
 
+def get_snake_to_apple_distance(snake, apple, grid):
+   grid_size = len(grid)
+   head = snake[-1]
+   if head.x < apple.x:
+      positive_distance_x = apple.x - head.x
+      negative_distance_x = grid_size - positive_distance_x
+   else:
+      negative_distance_x = head.x - apple.x
+      positive_distance_x = grid_size - negative_distance_x
+   
+   if head.y < apple.y:
+      positive_distance_y = apple.y - head.y
+      negative_distance_y = grid_size - positive_distance_x
+   else:
+      negative_distance_y = head.y - apple.y
+      positive_distance_y = grid_size - negative_distance_y
+   
+   result = [
+      positive_distance_x, negative_distance_x, 
+      positive_distance_y, negative_distance_y
+   ]
+   return result
+
+def get_snake_to_tail_distance(snake, grid):
+   grid_size = len(grid)
+   head = snake.pop()
+   min_positive_dx = grid_size
+   min_negative_dx = grid_size
+   min_positive_dy = grid_size
+   min_negative_dy = grid_size
+
+   tail_xs = [t.x for t in snake]
+   tail_ys = [t.y for t in snake]
+
+   for plus_x in range(grid_size):
+      if (head.x + plus_x) in tail_xs:
+         min_positive_dx = plus_x
+         break
+   for minus_x in range(grid_size):
+      if (head.x - minus_x) in tail_xs:
+         min_negative_dx = minus_x
+         break
+   for plus_y in range(grid_size):
+      if (head.y + plus_y) in tail_ys:
+         min_positive_dy = plus_y
+         break
+   for minus_y in range(grid_size):
+      if (head.y - minus_y) in tail_ys:
+         min_negative_dy = minus_y
+         break
+
+   snake.append(head)
+   result = [
+      min_positive_dx, min_negative_dx, 
+      min_positive_dy, min_negative_dy
+   ]
+
+   return result
+
 def net_predict_next_move(grid):
    distribution = net.predict_next_move(grid)
    move = distribution_to_move(distribution)
@@ -108,23 +167,23 @@ def advance(snake, direction, apple, grid):
 
 def update_grid(snake, grid, apple):
    for i,j in it.product(range(len(grid)), range(len(grid))):
-      grid[i][j] = [0]
+      grid[i][j] = 0
    for p in snake:
-      grid[p.x][p.y] = [1]
+      grid[p.x][p.y] = 1
    snake_head = snake[-1]
-   grid[snake_head.x][snake_head.y] = [2]
-   grid[apple.x][apple.y] = [-1]
+   grid[snake_head.x][snake_head.y] = 2
+   grid[apple.x][apple.y] = -1
 
 def print_(grid):
    os.system('clear')
 
    for i in range(len(grid)):
       for j in range(len(grid)):
-         if grid[i][j][0] == -1:
+         if grid[i][j] == -1:
             print('x', end='')
-         elif grid[i][j][0] == 1:
+         elif grid[i][j] == 1:
             print('s', end='')
-         elif grid[i][j][0] == 2:
+         elif grid[i][j] == 2:
             print('S', end='')
          else:
             print('_', end='')
