@@ -6,40 +6,27 @@ from tensorflow.keras import layers, models
 import matplotlib.pyplot as plt
 import numpy as np
 
-# input to Conv2D:
-# 4D tensor with shape: (batch, rows, cols, channels) if data_format is "channels_last".
+# elu, tanh, softplus
 model = models.Sequential()
-model.add(layers.Conv2D(
-   4, (2, 2),
-   activation='elu',
-   input_shape=(10, 10, 1),
-   data_format='channels_last'))
-model.add(layers.MaxPooling2D((2, 2)))
-model.add(layers.Conv2D(3, (4, 4), activation='elu'))
-model.add(layers.Flatten())
-# model.add(layers.Dense(4, activation='elu'))
-model.add(layers.Dense(3, activation='softmax'))
-
-# model = models.Sequential()
-# model.add(layers.Dense(5, activation='relu',input_shape=(400,)))
+model.add(layers.Dense(13, activation='relu',input_shape=(13,)))
+model.add(layers.Dense(4, activation='relu'))
 # model.add(layers.Dense(4, activation='relu'))
-# # model.add(layers.Dense(4, activation='elu'))
-# model.add(layers.Dense(3, activation='softmax'))
+model.add(layers.Dense(3, activation='softmax'))
 
 model.summary()
 
-try:
-   model.load_weights('best_weights')
-except Exception as e:
-   print(e)
+# try:
+model.load_weights('best_weights')
+# except Exception as e:
+#    print(e)
 
-def predict_next_move(grid):
-   prepared_grid = prepare_grid(grid)
-   result = model.predict(prepared_grid)
+def predict_next_move(features):
+   prepared_features = prepare_features(features)
+   result = model.predict(prepared_features)
    return result[0].tolist()
 
-def prepare_grid(grid):
-   wrap_batches = np.array([grid]) # single batch
+def prepare_features(features):
+   wrap_batches = np.array([features]) # single batch
    return wrap_batches
 
 def get_model_weight_shapes():

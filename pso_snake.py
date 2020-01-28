@@ -22,10 +22,10 @@ def apply_parameters_to_model(parameters):
 @particlefy 
 def target_function(parameters):
    apply_parameters_to_model(parameters)
-   points, moves = play(display=False, step_time=0)
+   points, moves = play(display=False, step_time=0, collision=False)
 
    # minus sign for minimization
-   return -1 * math.exp(points) * math.sqrt(moves)
+   return -1 * points # * math.exp(points)
 
 def debug_function(x):
    particles = []
@@ -56,20 +56,26 @@ def total_parameters(shapes):
       parameters += reduce(lambda x,y: x * y, shape)
    return parameters
 
+def create_bounds(dimensions):
+   max_bound = 5 * np.ones(dimensions)
+   min_bound = 0 * max_bound
+   bounds = (min_bound, max_bound)
+
 def run_optimisation():
    dimensions = total_parameters(net.get_model_weight_shapes())
-   options = {'c1': 0.5, 'c2': 0.3, 'w':0.9}#, 'k': 10, 'p': 2}
-   # Call instance of PSO
-   optimizer = ps.single.GlobalBestPSO(
-      n_particles=20, dimensions=dimensions, options=options)
+   options = {'c1': 1.0, 'c2': 1.0, 'w': 2.0}
+   bounds = create_bounds(dimensions)
 
-   # Perform optimization
-   cost, pos = optimizer.optimize(target_function, iters=100)
+   optimizer = ps.single.GlobalBestPSO(
+      n_particles=20, dimensions=dimensions,
+      options=options)
+   cost, pos = optimizer.optimize(target_function, iters=20)
    return cost, pos
 
 if __name__ == "__main__":
    cost, pos = run_optimisation()
 
-   print('BEST COST:{}'.format(cost))
+   print("BEST COST: {}".format(cost))
+   apply_parameters_to_model(pos)
    net.model.save_weights('best_weights')
 
