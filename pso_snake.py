@@ -24,10 +24,15 @@ def apply_parameters_to_model(parameters):
 @particlefy 
 def target_function(parameters):
    apply_parameters_to_model(parameters)
-   points, moves = play(display=False, step_time=0, collision=False)
+   points, moves = play(
+   display=False,
+   step_time=0,
+   collision=True,
+   moves_to_lose=100
+   )
 
    # minus sign for minimization
-   return -1 * points # * math.exp(points)
+   return -1 * points * math.exp(points) - math.log(moves)
 
 def debug_function(x):
    particles = []
@@ -68,15 +73,10 @@ def run_optimisation():
    options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9}
    bounds = create_bounds(dimensions)
 
-   # try:
-   #    initial_position = 1
-   # except Exception e:
-   #    print(e)
-
    optimizer = ps.single.GlobalBestPSO(
       n_particles=10, dimensions=dimensions,
       options=options)
-   cost, pos = optimizer.optimize(target_function, iters=100)
+   cost, pos = optimizer.optimize(target_function, iters=200)
    plot_history(optimizer.cost_history)
 
    return cost, pos

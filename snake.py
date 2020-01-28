@@ -60,19 +60,23 @@ def get_snake_to_tail_distance(snake, grid):
    tail_ys = [t.y for t in snake]
 
    for plus_x in range(grid_size):
-      if (head.x + plus_x) in tail_xs:
+      scanned_position = (head.x + plus_x) % grid_size
+      if scanned_position in tail_xs:
          min_positive_dx = plus_x
          break
    for minus_x in range(grid_size):
-      if (head.x - minus_x) in tail_xs:
+      scanned_position = (head.x - minus_x) % grid_size
+      if scanned_position in tail_xs:
          min_negative_dx = minus_x
          break
    for plus_y in range(grid_size):
+      scanned_position = (head.y + plus_y) % grid_size
       if (head.y + plus_y) in tail_ys:
          min_positive_dy = plus_y
          break
    for minus_y in range(grid_size):
-      if (head.y - minus_y) in tail_ys:
+      scanned_position = (head.y - minus_y) % grid_size
+      if scanned_position in tail_ys:
          min_negative_dy = minus_y
          break
 
@@ -118,10 +122,11 @@ def normalize(features, scale=1):
    return feature_array
 
 def construct_feature_array(time_left, direction, snake, apple, grid):
-   # tail_distances = get_snake_to_tail_distance(snake, grid)
+   tail_distances = get_snake_to_tail_distance(snake, grid)
    grid_size = len(grid)
    apple_distance = get_snake_to_apple_distance(snake, apple, grid)
    features = apple_distance
+   features += tail_distances
    features.append(time_left)
    features = normalize(features, scale=grid_size)
    orientation = get_apple_to_snake_orientation(snake, apple, grid)
@@ -302,10 +307,10 @@ def control_direction(key):
    if d is not None:
       update_direction(d)
 
-def play(display=True, step_time=0.01, moves_to_lose=20, collision=True):
+def play(display=True, step_time=0.01, moves_to_lose=50, collision=True):
    grid = initialize_grid(grid_size=10)
-   snake = initalize_snake(1)
-   apple = Point(5, 5)
+   snake = initalize_snake(4)
+   apple = Point(1, 1)
    direction = 'right'
    game_is_lost = False
    points = 0
@@ -346,8 +351,9 @@ def play(display=True, step_time=0.01, moves_to_lose=20, collision=True):
 
 
 if __name__ == "__main__":
-   play(display=True, step_time=0.1, moves_to_lose=30, collision=False)
+   score, moves = play(display=True, step_time=0.01, moves_to_lose=1000, collision=True)
 
+   print(score, moves)
 
 
 
