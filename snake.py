@@ -1,7 +1,6 @@
 import random as rnd
 import itertools as it
 from collections import deque, namedtuple
-from queue import Queue
 from time import sleep
 import os
 import time
@@ -19,6 +18,14 @@ WORLD_ROSE = ['north', 'ne', 'east', 'es', 'south', 'sw', 'west', 'wn']
 Point = namedtuple('Point', ['x', 'y'])
 
 def get_snake_to_apple_distance(snake, apple, grid):
+   head = snake[-1]
+   x_distance = abs(head.x - apple.x)
+   y_distance = abs(head.y - apple.y)
+
+   return [x_distance, y_distance]
+
+def get_snake_to_apple_distances(snake, apple, grid):
+   ''' unused '''
    grid_size = len(grid)
    head = snake[-1]
    if head.x < apple.x:
@@ -36,10 +43,10 @@ def get_snake_to_apple_distance(snake, apple, grid):
       positive_distance_y = grid_size - negative_distance_y
    
    result = [
-      positive_distance_x,# negative_distance_x, 
-      positive_distance_y, #negative_distance_y
+      positive_distance_x, negative_distance_x, 
+      positive_distance_y, negative_distance_y
    ]
-   return sqrt(positive_distance_x ** 2 + positive_distance_y ** 2)
+   return result
 
 def get_snake_to_tail_distance(snake, grid):
    grid_size = len(grid)
@@ -110,27 +117,42 @@ def normalize(features, scale=1):
    feature_array = [f / scale for f in features]
    return feature_array
 
-def construct_feature_array(direction, snake, apple, grid):
+def construct_feature_array(time_left, direction, snake, apple, grid):
+   # tail_distances = get_snake_to_tail_distance(snake, grid)
    grid_size = len(grid)
    apple_distance = get_snake_to_apple_distance(snake, apple, grid)
-   orientation = get_apple_to_snake_orientation(snake, apple, grid)
-   # tail_distances = get_snake_to_tail_distance(snake, grid)
-   features = [apple_distance]
+   features = apple_distance
+   features.append(time_left)
    features = normalize(features, scale=grid_size)
+   orientation = get_apple_to_snake_orientation(snake, apple, grid)
+   orientation = np.array(orientation)
    features += hot_encode_orientation(orientation)
    features += hot_enode_direction(direction)
    return features
 
-def net_predict_next_move(direction, snake, apple, grid):
-   features = construct_feature_array(direction, snake, apple, grid)
+def net_predict_next_move(time_left, direction, snake, apple, grid):
+   ''' not used anymore '''
+   raise NotImplementedError()
+   features = construct_feature_array(time_left, direction, snake, apple, grid)
    distribution = net.predict_next_move(features)
    move = distribution_to_move(distribution)
    return move
+
+def net_predict_next_direction(time_left, direction, snake, apple, grid):
+   features = construct_feature_array(time_left, direction, snake, apple, grid)
+   distribution = net.predict_next_move(features)
+   direction = distribution_to_direction(distribution)
+   return direction
 
 def distribution_to_move(distribution):
    direction_id = distribution.index(max(distribution))
    move = OPTIONS[direction_id]
    return move
+
+def distribution_to_direction(distribution):
+   direction_id = distribution.index(max(distribution))
+   direction = DIRECTIONS[direction_id]
+   return direction
 
 def random_move():
    move = rnd.choice(OPTIONS)
@@ -283,7 +305,7 @@ def control_direction(key):
 def play(display=True, step_time=0.01, moves_to_lose=20, collision=True):
    grid = initialize_grid(grid_size=10)
    snake = initalize_snake(1)
-   apple = Point(1, 1)
+   apple = Point(5, 5)
    direction = 'right'
    game_is_lost = False
    points = 0
@@ -297,8 +319,7 @@ def play(display=True, step_time=0.01, moves_to_lose=20, collision=True):
          if display: 
             print_(grid)
 
-         new_move = net_predict_next_move(direction, snake, apple, grid)
-         new_direction = move_to_direction(direction, new_move)
+         new_direction = net_predict_next_direction(moves_without_apple, direction, snake, apple, grid)
          direction = validate_direction(direction, new_direction)
          does_get_apple = advance(snake, direction, apple, grid)
 
@@ -309,6 +330,7 @@ def play(display=True, step_time=0.01, moves_to_lose=20, collision=True):
 
          if collision:
             game_is_lost = check_collision(snake)
+
          sleep(step_time)
          moves += 1
          moves_without_apple += 1
@@ -324,7 +346,7 @@ def play(display=True, step_time=0.01, moves_to_lose=20, collision=True):
 
 
 if __name__ == "__main__":
-   play(display=True, step_time=0.1, moves_to_lose=10000, collision=False)
+   play(display=True, step_time=0.1, moves_to_lose=30, collision=False)
 
 
 

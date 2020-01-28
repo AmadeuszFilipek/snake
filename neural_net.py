@@ -8,17 +8,17 @@ import numpy as np
 
 # elu, tanh, softplus
 model = models.Sequential()
-model.add(layers.Dense(13, activation='relu',input_shape=(13,)))
-model.add(layers.Dense(4, activation='relu'))
-# model.add(layers.Dense(4, activation='relu'))
+model.add(layers.Dense(8, activation='tanh',input_shape=(15,)))
+model.add(layers.Dense(4, activation='tanh'))
+# model.add(layers.Dense(6, activation='tanh'))
 model.add(layers.Dense(3, activation='softmax'))
 
 model.summary()
 
-# try:
-model.load_weights('best_weights')
-# except Exception as e:
-#    print(e)
+try:
+   model.load_weights('best_weights')
+except ValueError as e:
+   print("No weights loaded: incompatible model structures.")
 
 def predict_next_move(features):
    prepared_features = prepare_features(features)

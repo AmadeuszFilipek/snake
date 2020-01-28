@@ -1,6 +1,7 @@
 from functools import reduce
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 import pyswarms as ps
 
 from snake import play
@@ -13,6 +14,7 @@ def particlefy(function):
          particles.append(function(particle))
       return particles
    return wrapper
+
 
 def apply_parameters_to_model(parameters):
    shapes = net.get_model_weight_shapes()
@@ -63,14 +65,28 @@ def create_bounds(dimensions):
 
 def run_optimisation():
    dimensions = total_parameters(net.get_model_weight_shapes())
-   options = {'c1': 1.0, 'c2': 1.0, 'w': 2.0}
+   options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9}
    bounds = create_bounds(dimensions)
 
+   try:
+      initial_position = 1
+   except Exception e:
+      print(e)
+
    optimizer = ps.single.GlobalBestPSO(
-      n_particles=20, dimensions=dimensions,
+      n_particles=10, dimensions=dimensions,
       options=options)
-   cost, pos = optimizer.optimize(target_function, iters=20)
+   cost, pos = optimizer.optimize(target_function, iters=100)
+   plot_history(optimizer.cost_history)
+
    return cost, pos
+
+def plot_history(history):
+   plt.plot(history)
+   plt.title("Cost history")
+   plt.xlabel("Iterations")
+   plt.ylabel("Cost")
+   plt.show()
 
 if __name__ == "__main__":
    cost, pos = run_optimisation()
