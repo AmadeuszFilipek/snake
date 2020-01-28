@@ -11,7 +11,8 @@ from pynput.keyboard import Key, Listener
 import neural_net as net
 
 DIRECTIONS = ['left', 'up', 'right', 'down']
-OPTIONS = ['left', 'right',  'straight']
+OPTIONS = ['left', 'straight', 'right']
+WORLD_ROSE = ['north', 'ne', 'east', 'es', 'south', 'sw', 'west', 'wn']
 
 Point = namedtuple('Point', ['x', 'y'])
 
@@ -74,8 +75,47 @@ def get_snake_to_tail_distance(snake, grid):
 
    return result
 
-def net_predict_next_move(grid):
-   distribution = net.predict_next_move(grid)
+def get_apple_to_snake_orientation(snake, apple, grid):
+   snake_head = snake[-1]
+   if snake_head.x == apple.x:
+      apple_x_orientation = {'north', 'south'}
+   elif snake_head.x > apple.x:
+      apple_x_orientation = {'sw', 'west', 'wn'}
+   else:
+      apple_x_orientation = {'ne', 'east', 'es'}
+   
+   if snake_head.y == apple.y:
+      apple_y_orientation = {'east', 'west'}
+   elif snake_head.y > apple.y:
+      apple_y_orientation = {'es', 'south', 'sw'}
+   else:
+      apple_y_orientation = {'wn', 'north', 'ne'}
+   
+   orientation = apple_x_orientation.intersection(
+      apple_y_orientation).pop(0)
+   
+   return orientation
+
+def hot_encode_orientation(orientation):
+   one_hots = list(map(lambda x: int(x == orientation), WORLD_ROSE))
+   return one_hots
+
+def normalize(features, scale=1):
+   feature_array = [f / scale for f in features]
+   return feature_array
+
+def construct_feature_array(snake, apple, grid):
+   apple_distances = get_snake_to_apple_distance(snake, apple, grid)
+   orientation = get_apple_to_snake_orientation(snake, apple, grid)
+   # tail_distances = get_snake_to_tail_distance(snake, grid)
+   grid_size = len(grid)
+   features = normalize(apple_distances, scale=grid_size)
+   features += hot_encode_orientation(orientation)
+   return features
+
+def net_predict_next_move(snake, apple, grid):
+   features = construct_feature_array(snake, apple, grid)
+   distribution = net.predict_next_move(features)
    move = distribution_to_move(distribution)
    return move
 
@@ -150,7 +190,7 @@ def advance(snake, direction, apple, grid):
    # check new point for boundaries
    grid_size = len(grid)
    if new_point.x < 0:
-      new_point = Point(grid_size- 1, new_point.y)
+      new_point = Point(grid_size - 1, new_point.y)
    elif new_point.x > grid_size - 1:
       new_point = Point(0, new_point.y)
    if new_point.y < 0:
@@ -194,7 +234,8 @@ def initialize_grid(grid_size=20):
    grid = [[0 for i in range(grid_size)] for _ in range(grid_size)]
    return grid
 
-def initalize_snake(length=5):
+def initalize_snake(length=3):
+   if length < 1: raise ValueError("Invalid snake length")
    snake = deque()
    for i in range(length):
       snake.append(Point(x=0, y=i))
@@ -232,8 +273,8 @@ def control_direction(key):
 
 def play(display=True, step_time=0.01, moves_to_lose=20):
    grid = initialize_grid(grid_size=10)
-   snake = initalize_snake()
-   apple = generate_new_apple(snake, grid)
+   snake = initalize_snake(1)
+   apple = Point(5, 5)
    direction = 'right'
    game_is_lost = False
    points = 0
@@ -244,9 +285,11 @@ def play(display=True, step_time=0.01, moves_to_lose=20):
    try:
       while not game_is_lost:
          update_grid(snake, grid, apple)
-         if display: print_(grid)
+         if display: 
+            print_(grid)
+            # print(construct_feature_array(snake, apple, grid))
 
-         new_move = net_predict_next_move(grid)
+         new_move = net_predict_next_move(snake, apple, grid)
          new_direction = move_to_direction(direction, new_move)
          update_direction(direction, new_direction)
          does_get_apple = advance(snake, direction, apple, grid)
@@ -272,7 +315,7 @@ def play(display=True, step_time=0.01, moves_to_lose=20):
 
 
 if __name__ == "__main__":
-   play(display=True, step_time=0.01)
+   play(display=True, step_time=0.1, moves_to_lose=10000)
 
 
 
