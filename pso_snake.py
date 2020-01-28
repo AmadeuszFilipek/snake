@@ -68,10 +68,10 @@ def run_optimisation():
    options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9}
    bounds = create_bounds(dimensions)
 
-   try:
-      initial_position = 1
-   except Exception e:
-      print(e)
+   # try:
+   #    initial_position = 1
+   # except Exception e:
+   #    print(e)
 
    optimizer = ps.single.GlobalBestPSO(
       n_particles=10, dimensions=dimensions,

@@ -3,9 +3,9 @@ import itertools as it
 from collections import deque, namedtuple
 from time import sleep
 import os
-import time
 from math import sqrt
-import code
+import numpy as np
+# import code
 
 from pynput.keyboard import Key, Listener
 

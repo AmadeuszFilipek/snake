@@ -11,7 +11,7 @@ model = models.Sequential()
 model.add(layers.Dense(8, activation='tanh',input_shape=(15,)))
 model.add(layers.Dense(4, activation='tanh'))
 # model.add(layers.Dense(6, activation='tanh'))
-model.add(layers.Dense(3, activation='softmax'))
+model.add(layers.Dense(4, activation='softmax'))
 
 model.summary()
 
