@@ -32,7 +32,7 @@ def target_function(parameters):
    )
 
    # minus sign for minimization
-   return -1 * points * math.exp(points) - moves * moves
+   return -1 * points * math.exp(points) - moves
 
 @particlefy 
 def target_collision_function(parameters):
@@ -117,9 +117,9 @@ def plot_history(history):
 
 if __name__ == "__main__":
    cost, pos = run_optimisation(
-      target_collision_function,
-      iterations=100,
-      particles=15
+      target_function,
+      iterations=200,
+      particles=20
    )
 
    print("BEST COST: {}".format(cost))

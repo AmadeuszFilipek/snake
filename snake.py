@@ -136,17 +136,17 @@ def construct_feature_array(time_left, direction, snake, apple, grid):
    grid_size = len(grid)
    # normalizable features
    tail_distances = get_snake_to_tail_distance(snake, grid)
-   # apple_distance = get_snake_to_apple_distance(snake, apple, grid)
-   # features = apple_distance
+   apple_distance = get_snake_to_apple_distance(snake, apple, grid)
+   features += apple_distance
    features += tail_distances
    # features.append(time_left)
    features = normalize(features, scale=grid_size)
    
    # categorial features
    possible_moves = hot_encode_possible_moves(tail_distances)
-   # orientation = get_apple_to_snake_orientation(snake, apple, grid)
-   # orientation = np.array(orientation)
-   # features += hot_encode_orientation(orientation)
+   apple_orientation = get_apple_to_snake_orientation(snake, apple, grid)
+   apple_orientation = np.array(apple_orientation)
+   features += hot_encode_orientation(apple_orientation)
    features += hot_enode_direction(direction)
    features += possible_moves
    return features
@@ -278,7 +278,7 @@ def print_(grid):
          elif grid[i][j] == 2:
             print('S', end='')
          else:
-            print('_', end='')
+            print(' ', end='')
          print('  ', end='')
       print('\n')
 
@@ -327,7 +327,7 @@ def control_direction(key):
 def play(display=True, step_time=0.01, moves_to_lose=50, collision=True):
    grid = initialize_grid(grid_size=10)
    snake = initalize_snake(23, len(grid))
-   apple = Point(-1, -1)
+   apple = Point(5, 5)
    direction = 'right'
    game_is_lost = False
    points = 0
@@ -368,7 +368,12 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True):
 
 
 if __name__ == "__main__":
-   score, moves = play(display=True, step_time=0.1, moves_to_lose=1000, collision=True)
+   score, moves = play(
+   display=True, 
+   step_time=0.05, 
+   moves_to_lose=1000, 
+   collision=True
+   )
 
    print(score, moves)
 
