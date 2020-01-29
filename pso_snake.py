@@ -32,7 +32,33 @@ def target_function(parameters):
    )
 
    # minus sign for minimization
-   return -1 * points * math.exp(points) - math.log(moves)
+   return -1 * points * math.exp(points) - moves * moves
+
+@particlefy 
+def target_collision_function(parameters):
+   apply_parameters_to_model(parameters)
+   points, moves = play(
+   display=False,
+   step_time=0,
+   collision=True,
+   moves_to_lose=1000
+   )
+
+   # minus sign for minimization
+   return - moves * moves
+
+@particlefy
+def target_apple_function(parameters):
+   apply_parameters_to_model(parameters)
+   points, moves = play(
+   display=False,
+   step_time=0,
+   collision=False,
+   moves_to_lose=20
+   )
+
+   # minus sign for minimization
+   return -1 * points * math.exp(points)
 
 def debug_function(x):
    particles = []
@@ -68,15 +94,16 @@ def create_bounds(dimensions):
    min_bound = 0 * max_bound
    bounds = (min_bound, max_bound)
 
-def run_optimisation():
+def run_optimisation(target_function, iterations=10, particles=15):
    dimensions = total_parameters(net.get_model_weight_shapes())
    options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9}
    bounds = create_bounds(dimensions)
 
    optimizer = ps.single.GlobalBestPSO(
-      n_particles=10, dimensions=dimensions,
+      n_particles=particles,
+      dimensions=dimensions,
       options=options)
-   cost, pos = optimizer.optimize(target_function, iters=200)
+   cost, pos = optimizer.optimize(target_function, iters=iterations)
    plot_history(optimizer.cost_history)
 
    return cost, pos
@@ -89,7 +116,11 @@ def plot_history(history):
    plt.show()
 
 if __name__ == "__main__":
-   cost, pos = run_optimisation()
+   cost, pos = run_optimisation(
+      target_collision_function,
+      iterations=100,
+      particles=15
+   )
 
    print("BEST COST: {}".format(cost))
    apply_parameters_to_model(pos)

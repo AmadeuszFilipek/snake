@@ -49,6 +49,7 @@ def get_snake_to_apple_distances(snake, apple, grid):
    return result
 
 def get_snake_to_tail_distance(snake, grid):
+   # this function is wrong implemented
    grid_size = len(grid)
    head = snake.pop()
    min_positive_dx = grid_size
@@ -56,34 +57,35 @@ def get_snake_to_tail_distance(snake, grid):
    min_positive_dy = grid_size
    min_negative_dy = grid_size
 
-   tail_xs = [t.x for t in snake]
-   tail_ys = [t.y for t in snake]
-
-   for plus_x in range(grid_size):
+   for plus_x in range(1, grid_size):
       scanned_position = (head.x + plus_x) % grid_size
-      if scanned_position in tail_xs:
+      point = Point(scanned_position, head.y)
+      if point in snake:
          min_positive_dx = plus_x
          break
-   for minus_x in range(grid_size):
+   for minus_x in range(1, grid_size):
       scanned_position = (head.x - minus_x) % grid_size
-      if scanned_position in tail_xs:
+      point = Point(scanned_position, head.y)
+      if point in snake:
          min_negative_dx = minus_x
          break
-   for plus_y in range(grid_size):
+   for plus_y in range(1, grid_size):
       scanned_position = (head.y + plus_y) % grid_size
-      if (head.y + plus_y) in tail_ys:
+      point = Point(head.x, scanned_position)
+      if point in snake:
          min_positive_dy = plus_y
          break
-   for minus_y in range(grid_size):
+   for minus_y in range(1, grid_size):
       scanned_position = (head.y - minus_y) % grid_size
-      if scanned_position in tail_ys:
+      point = Point(head.x, scanned_position)
+      if point in snake:
          min_negative_dy = minus_y
          break
 
    snake.append(head)
    result = [
-      min_positive_dx, min_negative_dx, 
-      min_positive_dy, min_negative_dy
+      min_negative_dy, min_negative_dx,
+      min_positive_dy, min_positive_dx
    ]
 
    return result
@@ -109,6 +111,14 @@ def get_apple_to_snake_orientation(snake, apple, grid):
 
    return orientation
 
+def hot_encode_possible_moves(snake_to_tail_distances):
+   hot_encoded_possibilities = [1, 1, 1, 1]
+   for i, distance in enumerate(snake_to_tail_distances):
+      if distance == 1:
+         hot_encoded_possibilities[i] = 0
+   
+   return hot_encoded_possibilities
+
 def hot_encode_orientation(orientation):
    one_hots = list(map(lambda x: int(x == orientation), WORLD_ROSE))
    return one_hots
@@ -122,17 +132,23 @@ def normalize(features, scale=1):
    return feature_array
 
 def construct_feature_array(time_left, direction, snake, apple, grid):
-   tail_distances = get_snake_to_tail_distance(snake, grid)
+   features = []
    grid_size = len(grid)
-   apple_distance = get_snake_to_apple_distance(snake, apple, grid)
-   features = apple_distance
+   # normalizable features
+   tail_distances = get_snake_to_tail_distance(snake, grid)
+   # apple_distance = get_snake_to_apple_distance(snake, apple, grid)
+   # features = apple_distance
    features += tail_distances
-   features.append(time_left)
+   # features.append(time_left)
    features = normalize(features, scale=grid_size)
-   orientation = get_apple_to_snake_orientation(snake, apple, grid)
-   orientation = np.array(orientation)
-   features += hot_encode_orientation(orientation)
+   
+   # categorial features
+   possible_moves = hot_encode_possible_moves(tail_distances)
+   # orientation = get_apple_to_snake_orientation(snake, apple, grid)
+   # orientation = np.array(orientation)
+   # features += hot_encode_orientation(orientation)
    features += hot_enode_direction(direction)
+   features += possible_moves
    return features
 
 def net_predict_next_move(time_left, direction, snake, apple, grid):
@@ -270,11 +286,12 @@ def initialize_grid(grid_size=20):
    grid = [[0 for i in range(grid_size)] for _ in range(grid_size)]
    return grid
 
-def initalize_snake(length=3):
+def initalize_snake(length, grid_size):
    if length < 1: raise ValueError("Invalid snake length")
    snake = deque()
+   
    for i in range(length):
-      snake.append(Point(x=0, y=i))
+      snake.append(Point(x=i // grid_size, y=i % grid_size))
    return snake
 
 def validate_direction(last_direction, d):
@@ -309,8 +326,8 @@ def control_direction(key):
 
 def play(display=True, step_time=0.01, moves_to_lose=50, collision=True):
    grid = initialize_grid(grid_size=10)
-   snake = initalize_snake(4)
-   apple = Point(1, 1)
+   snake = initalize_snake(23, len(grid))
+   apple = Point(-1, -1)
    direction = 'right'
    game_is_lost = False
    points = 0
@@ -351,7 +368,7 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True):
 
 
 if __name__ == "__main__":
-   score, moves = play(display=True, step_time=0.01, moves_to_lose=1000, collision=True)
+   score, moves = play(display=True, step_time=0.1, moves_to_lose=1000, collision=True)
 
    print(score, moves)
 

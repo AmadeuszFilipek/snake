@@ -8,8 +8,8 @@ import numpy as np
 
 # elu, tanh, softplus
 model = models.Sequential()
-model.add(layers.Dense(19, activation='tanh',input_shape=(19,)))
-model.add(layers.Dense(16, activation='tanh'))
+model.add(layers.Dense(12, activation='tanh',input_shape=(12,)))
+model.add(layers.Dense(8, activation='tanh'))
 model.add(layers.Dense(8, activation='tanh'))
 model.add(layers.Dense(4, activation='softmax'))
 
