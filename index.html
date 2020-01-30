@@ -8,32 +8,48 @@
    <title>snake</title>
 
    <style>
+      body {
+         padding: 20px;
+      }
+
       .box {
          padding: 10px;
-         margin-top: 100px;
+         margin-top: 50px;
          display: flex;
          justify-content: center;
       }
+      .grid-container {
+         width: 400px;
+         height: 400px;
+      }
       .cell-empty {
+         margin: 10px;
          background-color: black;
+         justify-self: center;
+         width: 20px;
+         height: 20px;
       }
    </style>
 
-  <!-- Load Vue followed by BootstrapVue -->
-  <script src="//unpkg.com/vue@latest/dist/vue.min.js"></script>
-  <script type="module">
-   import App from "./app.js";
+   <!-- Load Vue followed by BootstrapVue -->
+   <script src="//unpkg.com/vue@latest/dist/vue.min.js"></script>
+   <script type="module">
+      import App from "./app.js";
    </script>
 </head>
 
 <body>
-   <div id='app'>
-      <div v-for="row in AppState.grid">
-         <div v-for="cell in row" class="cell-empty">
-            X
-         </div>
-      </div>
+   <div id='app' class="box">
+      <div class="grid-container" v-bind:style="gridStructureStyle">
 
+            <div v-for="row in AppState.grid" v-bind:style="gridColumnStyle">
+               <div v-for="col in row" class="cell-empty"
+                  v-bind:style="gridCellStyle(row, col)">
+                  X
+               </div>
+            </div>
+
+      </div>
    </div>
 </body>
 
