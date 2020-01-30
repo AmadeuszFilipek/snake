@@ -48,38 +48,34 @@ def get_snake_to_apple_distances(snake, apple, grid):
    ]
    return result
 
-def get_snake_to_tail_distance(snake, grid):
+def get_snake_to_obtacle_distance(snake, grid):
    # this function is wrong implemented
    grid_size = len(grid)
    head = snake.pop()
-   min_positive_dx = grid_size
-   min_negative_dx = grid_size
-   min_positive_dy = grid_size
-   min_negative_dy = grid_size
+   min_positive_dx = (grid_size - 1) - head.x
+   min_negative_dx = head.x
+   min_positive_dy = (grid_size - 1) - head.y
+   min_negative_dy = head.y
 
-   for plus_x in range(1, grid_size):
-      scanned_position = (head.x + plus_x) % grid_size
-      point = Point(scanned_position, head.y)
+   for plus_x in range(1, min_positive_dx):
+      point = Point(head.x + plus_x, head.y)
       if point in snake:
-         min_positive_dx = plus_x
+         min_positive_dx = plus_x - 1
          break
-   for minus_x in range(1, grid_size):
-      scanned_position = (head.x - minus_x) % grid_size
-      point = Point(scanned_position, head.y)
+   for minus_x in range(1, min_negative_dx):
+      point = Point(head.x - minus_x, head.y)
       if point in snake:
-         min_negative_dx = minus_x
+         min_negative_dx = minus_x - 1
          break
-   for plus_y in range(1, grid_size):
-      scanned_position = (head.y + plus_y) % grid_size
-      point = Point(head.x, scanned_position)
+   for plus_y in range(1, min_positive_dy):
+      point = Point(head.x, head.y + plus_y)
       if point in snake:
-         min_positive_dy = plus_y
+         min_positive_dy = plus_y - 1
          break
    for minus_y in range(1, grid_size):
-      scanned_position = (head.y - minus_y) % grid_size
-      point = Point(head.x, scanned_position)
+      point = Point(head.x, head.y - minus_y)
       if point in snake:
-         min_negative_dy = minus_y
+         min_negative_dy = minus_y - 1
          break
 
    snake.append(head)
@@ -87,7 +83,6 @@ def get_snake_to_tail_distance(snake, grid):
       min_negative_dy, min_negative_dx,
       min_positive_dy, min_positive_dx
    ]
-
    return result
 
 def get_apple_to_snake_orientation(snake, apple, grid):
@@ -114,7 +109,7 @@ def get_apple_to_snake_orientation(snake, apple, grid):
 def hot_encode_possible_moves(snake_to_tail_distances):
    hot_encoded_possibilities = [1, 1, 1, 1]
    for i, distance in enumerate(snake_to_tail_distances):
-      if distance == 1:
+      if distance == 0:
          hot_encoded_possibilities[i] = 0
    
    return hot_encoded_possibilities
@@ -175,9 +170,9 @@ def distribution_to_direction(distribution):
    direction = DIRECTIONS[direction_id]
    return direction
 
-def random_move():
-   move = rnd.choice(OPTIONS)
-   return move
+def random_direction():
+   direction = rnd.choice(DIRECTIONS)
+   return direction
 
 def move_to_direction(previous_direction, move):
    direction_id = DIRECTIONS.index(previous_direction)
@@ -194,16 +189,28 @@ def move_to_direction(previous_direction, move):
    result = DIRECTIONS[direction_id]
    return result
 
-def check_collision(snake):
-   snake_head = snake.pop()
+def check_tail_collision(snake):
    collision = False
+   head = snake.pop()
    for p in snake:
-      if p.x == snake_head.x and p.y == snake_head.y:
+      if p.x == head.x and p.y == head.y:
          collision = True
          break
-
-   snake.append(snake_head)
+   snake.append(head)
    return collision
+
+def check_wall_collision(snake, grid_size):
+   head = snake[-1]
+   if head.x >= grid_size or head.x < 0:
+      return True
+   if head.y >= grid_size or head.y < 0:
+      return True
+   return False
+
+def check_collision(snake, grid_size):
+   wall_collision = check_wall_collision(snake, grid_size)
+   tail_collision = check_tail_collision(snake)
+   return wall_collision or tail_collision
 
 def gets_apple(snake, apple):
    snake_head = snake[-1]
@@ -239,17 +246,6 @@ def advance(snake, direction, apple, grid):
    else:
       raise ValueError("Invalid direction")
    
-   # check new point for boundaries
-   grid_size = len(grid)
-   if new_point.x < 0:
-      new_point = Point(grid_size - 1, new_point.y)
-   elif new_point.x > grid_size - 1:
-      new_point = Point(0, new_point.y)
-   if new_point.y < 0:
-      new_point = Point(new_point.x, grid_size - 1)
-   elif new_point.y > grid_size - 1:
-      new_point = Point(new_point.x, 0)
-
    snake.append(new_point)
    does_get_apple = gets_apple(snake, apple)
    if not does_get_apple:
@@ -290,7 +286,7 @@ def initalize_snake(length, grid_size):
    if length < 1: raise ValueError("Invalid snake length")
    snake = deque()
    
-   for i in range(length):
+   for i in range(grid_size * 3, grid_size * 3 + length):
       snake.append(Point(x=i // grid_size, y=i % grid_size))
    return snake
 
@@ -325,14 +321,16 @@ def control_direction(key):
       update_direction(d)
 
 def play(display=True, step_time=0.01, moves_to_lose=50, collision=True):
-   grid = initialize_grid(grid_size=10)
-   snake = initalize_snake(23, len(grid))
-   apple = Point(5, 5)
+   grid_size = 10
+   grid = initialize_grid(grid_size=grid_size)
+   snake = initalize_snake(4, grid_size)
+   apple = Point(x=5, y=5)
    direction = 'right'
    game_is_lost = False
    points = 0
    moves = 0
-   moves_without_apple = 0
+   moves_without_apple = 1
+   moves_to_get_apple = []
 
    # main game loop
    try:
@@ -340,42 +338,48 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True):
          update_grid(snake, grid, apple)
          if display: 
             print_(grid)
-
+            
          new_direction = net_predict_next_direction(moves_without_apple, direction, snake, apple, grid)
          direction = validate_direction(direction, new_direction)
          does_get_apple = advance(snake, direction, apple, grid)
 
          if does_get_apple:
             points += 1
+            moves_to_get_apple.append(moves_without_apple)
             moves_without_apple = 0
             apple = generate_new_apple(snake, grid)
 
          if collision:
-            game_is_lost = check_collision(snake)
+            game_is_lost = check_collision(snake, grid_size)
 
          sleep(step_time)
          moves += 1
          moves_without_apple += 1
 
-         if moves_without_apple >= moves_to_lose:
+         if moves_without_apple > moves_to_lose:
             game_is_lost = True
          
 
    except KeyboardInterrupt:
       pass
+   
+   if points > 0:
+      avg_moves_to_get_apple = sum(moves_to_get_apple) / points
+   else:
+      avg_moves_to_get_apple = 10000
 
-   return points, moves
+   return points, moves, avg_moves_to_get_apple
 
 
 if __name__ == "__main__":
-   score, moves = play(
+   score, moves, avg_moves_to_get_apple = play(
    display=True, 
    step_time=0.05, 
    moves_to_lose=1000, 
    collision=True
    )
 
-   print(score, moves)
+   print(score, moves, avg_moves_to_get_apple)
 
 
 

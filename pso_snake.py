@@ -24,7 +24,7 @@ def apply_parameters_to_model(parameters):
 @particlefy 
 def target_function(parameters):
    apply_parameters_to_model(parameters)
-   points, moves = play(
+   points, moves, avg_moves_to_get_apple = play(
    display=False,
    step_time=0,
    collision=True,
@@ -32,7 +32,7 @@ def target_function(parameters):
    )
 
    # minus sign for minimization
-   return -1 * points * math.exp(points) - moves
+   return -1 * points / avg_moves_to_get_apple * math.exp(points)  - moves
 
 @particlefy 
 def target_collision_function(parameters):
@@ -118,8 +118,8 @@ def plot_history(history):
 if __name__ == "__main__":
    cost, pos = run_optimisation(
       target_function,
-      iterations=200,
-      particles=20
+      iterations=1000,
+      particles=10
    )
 
    print("BEST COST: {}".format(cost))
