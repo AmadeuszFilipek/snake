@@ -29,6 +29,15 @@
          width: 20px;
          height: 20px;
       }
+      .apple {
+         background-color: red;
+      }
+      .tail {
+         background-color: coral;
+      }
+      .head {
+         background-color: greenyellow;
+      }
    </style>
 
    <!-- Load Vue followed by BootstrapVue -->
@@ -43,9 +52,8 @@
       <div class="grid-container" v-bind:style="gridStructureStyle">
 
             <div v-for="row in AppState.grid" v-bind:style="gridColumnStyle">
-               <div v-for="col in row" class="cell-empty"
-                  v-bind:style="gridCellStyle(row, col)">
-                  X
+               <div v-for="cell in row" class="cell-empty"
+                  v-bind:class="gridCellClass(cell)">
                </div>
             </div>
 
