@@ -1,3 +1,4 @@
+
 function init() {
    console.log('init');
 
@@ -11,18 +12,21 @@ function init() {
             3: 'apple'},
          directions: ['left', 'up', 'right', 'down'],
          WORLD_ROSE: ['north', 'ne', 'east', 'es', 'south', 'sw', 'west', 'wn'],
+         model: null,
          AppState: {
             grid_size: 10,
             grid: null,
             snake: [],
             apple: null,
             direction: null,
-            pushed_direction: null
+            pushed_direction: null,
+            is_playing: false
          }
       },
 
       async mounted() {
-         this.initialize_state()
+         this.initializeModel()
+         await this.initializeState()
       },
 
       computed: {
@@ -49,10 +53,16 @@ function init() {
                'grid-template-columns': this.gridSectionPercents.reduce(function(x,y){return x + ' ' + y})
             }
          },
+         isPlayButtonDisabled: function() {
+            return this.AppState.is_playing
+         }
       },
 
       methods: {
          
+         async initializeModel() {
+            this.model = await tf.loadLayersModel('./model/model.json');
+         },
          gridCellClass: function(cell) {
             let class_name = this.grid_indicators[cell]
             return class_name
@@ -163,10 +173,10 @@ function init() {
             
             return new_snake
          },
-         initialize_state() {
+         initializeState() {
             let grid_size = this.AppState.grid_size
             let grid = this.initializeGrid(grid_size)
-            let snake = this.initializeSnake(3)
+            let snake = this.initializeSnake(4)
             let apple = this.generateNewApple(snake, grid_size)
             grid = this.updateGrid(grid, snake, apple)
             let direction = 'right'
@@ -175,12 +185,12 @@ function init() {
          sleep(miliseconds) {
             return new Promise(resolve => setTimeout(resolve, miliseconds * 1000));
          },
-         check_collision(snake, grid_size) {
-            let wall_collision = this.check_wall_collision(snake, grid_size)
-            let tail_collision = this.check_tail_collision(snake)
+         checkCollision(snake, grid_size) {
+            let wall_collision = this.checkWallCollision(snake, grid_size)
+            let tail_collision = this.checkTailCollision(snake)
             return (wall_collision || tail_collision)
          },
-         check_wall_collision(snake, grid_size) {
+         checkWallCollision(snake, grid_size) {
             let head = snake[snake.length - 1]
             if (head.x >= grid_size || head.x < 0)
                return true
@@ -188,7 +198,7 @@ function init() {
                return true
             return false
          },
-         check_tail_collision(snake) {
+         checkTailCollision(snake) {
             let collision = false
             let head = snake[snake.length - 1]
 
@@ -209,53 +219,64 @@ function init() {
             else
                return this.AppState.direction
          },
-         netPredictNextDirection(direction, snake, apple, grid) {
+         async netPredictNextDirection(direction, snake, apple, grid) {
             let features = this.constructFeatureArray(direction, snake, apple, grid)
-            let distribution = net.predictNextMove(features)
-            let direction = this.distribution_to_direction(distribution)
+            let distribution = await this.predictNextMove(features)
+            let new_direction = this.distributionToDirection(distribution)
+            return new_direction
+         },
+         distributionToDirection(distribution) {
+            const direction_id = this.indexOfMax(distribution)
+            const direction = this.directions[direction_id]
             return direction
          },
+         async predictNextMove(features) {
+            const batch = tf.tensor([features])
+            let prediction = this.model.predict(batch);
+            let result = null
+            await prediction.array().then(array => result = array)
+            return result[0]
+         }, 
          pointInSnakeTail(point, snake) {
-            let is_point_in_snake = false
             for (let i = 0; i < snake.length - 1; i++) {
                if (point.x === snake[i].x & point.y === snake[i].y) {
-                  is_point_in_snake = true
-                  break
+                  return true
                }
             }
-            return is_point_in_snake
+            return false
          },
          getSnakeToObtacleDistance(snake, grid) {
-            let grid_size = grid.length
-            head = snake[snake.length - 1]
+            const grid_size = grid.length
+            const head = snake[snake.length - 1]
             let min_positive_dx = (grid_size - 1) - head.x
             let min_negative_dx = head.x
             let min_positive_dy = (grid_size - 1) - head.y
             let min_negative_dy = head.y
-            
+            let point = null
+
             for (let px = 1; px < min_positive_dx; px ++) {
-               point = (head.x + px, head.y)
+               point = {'x': head.x + px, 'y':  head.y}
                if (this.pointInSnakeTail(point, snake)) {
                   min_positive_dx = px - 1
                   break
                }
             } 
             for (let mx = 1; mx < min_negative_dx; mx ++) {
-               point = (head.x - mx, head.y)
+               point = {'x': head.x - mx, 'y': head.y}
                if (this.pointInSnakeTail(point, snake)) {
                   min_negative_dx = mx - 1
                   break
                }
             }
             for (let py = 1; py < min_positive_dy; py ++) {
-               point = (head.x, head.y + py)
+               point = {'x': head.x, 'y':  head.y + py}
                if (this.pointInSnakeTail(point, snake)) {
                   min_positive_dy = py - 1
                   break
                }
             }
             for (let my = 1; my < min_negative_dy; my ++) {
-               point = (head.x, head.y - my)
+               point = {'x': head.x, 'y':  head.y - my}
                if (this.pointInSnakeTail(point, snake)) {
                   min_negative_dy = my - 1
                   break
@@ -269,17 +290,18 @@ function init() {
             return result
          },
          getSnakeToAppleDistance(snake, apple) {
-            let head = snake[-1]
+            let head = snake[snake.length - 1]
             let x_distance = Math.abs(head.x - apple.x)
             let y_distance = Math.abs(head.y - apple.y)
             let result = [x_distance, y_distance]
             return result
          },
          normalize(features, grid_size) {
-            let feature_array = feature_array.forEach(element => {
-               element / grid_size
+            let normalized_features = []
+            features.forEach(element => {
+               normalized_features.push(element / grid_size)
             });
-            return feature_array
+            return normalized_features
          },
          hotEncodePossibleMoves(snake_to_tail_distances) {
             let hot_encoded_possibilities = [1, 1, 1, 1]
@@ -292,6 +314,8 @@ function init() {
          },
          getAppleToSnakeOrientation(snake, apple, grid) {
             let snake_head = snake[snake.length - 1]
+            let apple_x_orientation = null
+            let apple_y_orientation = null
             if (snake_head.x == apple.x)
                apple_x_orientation = ['north', 'south']
             else if (snake_head.x > apple.x)
@@ -306,7 +330,7 @@ function init() {
             else
                apple_y_orientation = ['wn', 'north', 'ne']
          
-            let orientation = array1.filter(value => array2.includes(value))
+            let orientation = apple_x_orientation.filter(value => apple_y_orientation.includes(value))
          
             return orientation[0]
          },
@@ -325,18 +349,18 @@ function init() {
             let grid_size = grid.length
 
             // numerical features
-            tail_distances = this.getSnakeToObtacleDistance(snake, grid)
-            apple_distance = this.getSnakeToAppleDistance(snake, apple)
+            const obstacle_distances = this.getSnakeToObtacleDistance(snake, grid)
+            const apple_distance = this.getSnakeToAppleDistance(snake, apple)
             features = features.concat(apple_distance)
-            features = features.concat(tail_distances)
+            features = features.concat(obstacle_distances)
             features = this.normalize(features, grid_size)
             
             // # categorial features
-            possible_moves = this.hotEncodePossibleMoves(tail_distances)
-            apple_orientation = this.getAppleToSnakeOrientation(snake, apple, grid)
-            features += hotEncodeOrientation(apple_orientation)
-            features += hotEnodeDirection(direction)
-            features += possible_moves
+            const possible_moves = this.hotEncodePossibleMoves(obstacle_distances)
+            const apple_orientation = this.getAppleToSnakeOrientation(snake, apple, grid)
+            features = features.concat(this.hotEncodeOrientation(apple_orientation))
+            features = features.concat(this.hotEnodeDirection(direction))
+            features = features.concat(possible_moves)
             return features
          },
          async play(step_time=1) {
@@ -355,7 +379,7 @@ function init() {
                await this.sleep(step_time)
                
                // let new_direction = this.generateDirection()
-               let new_direction =  this.netPredictNextDirection(direction, snake, apple, grid)
+               let new_direction = await this.netPredictNextDirection(direction, snake, apple, grid)
                // let new_direction = this.getPushedDirection()
                direction = this.validateDirection(direction, new_direction)
                snake = this.advance(snake, direction, apple)
@@ -365,14 +389,39 @@ function init() {
                   apple = this.generateNewApple(snake, grid_size)
                }
                
-               game_is_lost = this.check_collision(snake, grid_size)
+               game_is_lost = this.checkCollision(snake, grid_size)
                
                moves += 1
             }
+            this.cleanUpAfterGame()
+         },
+         cleanUpAfterGame() {
+            this.AppState.is_playing = false
          },
          triggerPlayButton() {
-            this.play(0.1)
-         }
+            if (!this.AppState.is_playing) {
+               this.AppState.is_playing = true
+               this.initializeState()
+               this.play(0.1)
+            }
+         },
+         indexOfMax(arr) {
+            if (arr.length === 0) {
+                return -1;
+            }
+        
+            let max = arr[0];
+            let maxIndex = 0;
+        
+            for (let i = 1; i < arr.length; i++) {
+                if (arr[i] > max) {
+                    maxIndex = i;
+                    max = arr[i];
+                }
+            }
+        
+            return maxIndex
+        }
       }
    });
 }

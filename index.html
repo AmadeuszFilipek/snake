@@ -40,8 +40,10 @@
       }
    </style>
 
-   <!-- Load Vue followed by BootstrapVue -->
+   <!-- Load Vue -->
    <script src="//unpkg.com/vue@latest/dist/vue.min.js"></script>
+   <!-- Load TensorflowJS -->
+   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.0.0/dist/tf.min.js"></script>
    <script type="module">
       import App from "./app.js";
    </script>
@@ -61,7 +63,7 @@
                   v-bind:class="gridCellClass(cell)">
                </div>
             </div>
-            <button v-on:click="triggerPlayButton" class="play-button">
+            <button v-on:click="triggerPlayButton" class="play-button" :disabled='isPlayButtonDisabled'>
                PLAY
             </button>
       </div>
