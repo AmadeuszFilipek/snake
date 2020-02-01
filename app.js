@@ -10,6 +10,7 @@ function init() {
             2: 'head',
             3: 'apple'},
          directions: ['left', 'up', 'right', 'down'],
+         WORLD_ROSE: ['north', 'ne', 'east', 'es', 'south', 'sw', 'west', 'wn'],
          AppState: {
             grid_size: 10,
             grid: null,
@@ -200,7 +201,6 @@ function init() {
             return collision
          },
          submitKeyPress(key) {
-            console.log('keypress' + key)
             this.AppState.pushed_direction = key
          },
          getPushedDirection() {
@@ -208,6 +208,136 @@ function init() {
                return this.AppState.pushed_direction
             else
                return this.AppState.direction
+         },
+         netPredictNextDirection(direction, snake, apple, grid) {
+            let features = this.constructFeatureArray(direction, snake, apple, grid)
+            let distribution = net.predictNextMove(features)
+            let direction = this.distribution_to_direction(distribution)
+            return direction
+         },
+         pointInSnakeTail(point, snake) {
+            let is_point_in_snake = false
+            for (let i = 0; i < snake.length - 1; i++) {
+               if (point.x === snake[i].x & point.y === snake[i].y) {
+                  is_point_in_snake = true
+                  break
+               }
+            }
+            return is_point_in_snake
+         },
+         getSnakeToObtacleDistance(snake, grid) {
+            let grid_size = grid.length
+            head = snake[snake.length - 1]
+            let min_positive_dx = (grid_size - 1) - head.x
+            let min_negative_dx = head.x
+            let min_positive_dy = (grid_size - 1) - head.y
+            let min_negative_dy = head.y
+            
+            for (let px = 1; px < min_positive_dx; px ++) {
+               point = (head.x + px, head.y)
+               if (this.pointInSnakeTail(point, snake)) {
+                  min_positive_dx = px - 1
+                  break
+               }
+            } 
+            for (let mx = 1; mx < min_negative_dx; mx ++) {
+               point = (head.x - mx, head.y)
+               if (this.pointInSnakeTail(point, snake)) {
+                  min_negative_dx = mx - 1
+                  break
+               }
+            }
+            for (let py = 1; py < min_positive_dy; py ++) {
+               point = (head.x, head.y + py)
+               if (this.pointInSnakeTail(point, snake)) {
+                  min_positive_dy = py - 1
+                  break
+               }
+            }
+            for (let my = 1; my < min_negative_dy; my ++) {
+               point = (head.x, head.y - my)
+               if (this.pointInSnakeTail(point, snake)) {
+                  min_negative_dy = my - 1
+                  break
+               }
+            }
+            
+            let result = [
+               min_negative_dy, min_negative_dx,
+               min_positive_dy, min_positive_dx
+            ]
+            return result
+         },
+         getSnakeToAppleDistance(snake, apple) {
+            let head = snake[-1]
+            let x_distance = Math.abs(head.x - apple.x)
+            let y_distance = Math.abs(head.y - apple.y)
+            let result = [x_distance, y_distance]
+            return result
+         },
+         normalize(features, grid_size) {
+            let feature_array = feature_array.forEach(element => {
+               element / grid_size
+            });
+            return feature_array
+         },
+         hotEncodePossibleMoves(snake_to_tail_distances) {
+            let hot_encoded_possibilities = [1, 1, 1, 1]
+            for (let i = 0; i < snake_to_tail_distances.length; i ++) {
+               if (snake_to_tail_distances[i] === 0) {
+                  hot_encoded_possibilities[i] = 0
+               }
+            }
+            return hot_encoded_possibilities
+         },
+         getAppleToSnakeOrientation(snake, apple, grid) {
+            let snake_head = snake[snake.length - 1]
+            if (snake_head.x == apple.x)
+               apple_x_orientation = ['north', 'south']
+            else if (snake_head.x > apple.x)
+               apple_x_orientation = ['sw', 'west', 'wn']
+            else
+               apple_x_orientation = ['ne', 'east', 'es']
+            
+            if (snake_head.y == apple.y)
+               apple_y_orientation = ['east', 'west']
+            else if (snake_head.y > apple.y)
+               apple_y_orientation = ['es', 'south', 'sw']
+            else
+               apple_y_orientation = ['wn', 'north', 'ne']
+         
+            let orientation = array1.filter(value => array2.includes(value))
+         
+            return orientation[0]
+         },
+         hotEncodeOrientation(apple_orientation) {
+            let one_hots = []
+            this.WORLD_ROSE.forEach(d => one_hots.push(d === apple_orientation))
+            return one_hots
+         },
+         hotEnodeDirection(direction) {
+            let one_hots = []
+            this.directions.forEach(d => one_hots.push(d === direction))
+            return one_hots
+         },
+         constructFeatureArray(direction, snake, apple, grid) {
+            let features = []
+            let grid_size = grid.length
+
+            // numerical features
+            tail_distances = this.getSnakeToObtacleDistance(snake, grid)
+            apple_distance = this.getSnakeToAppleDistance(snake, apple)
+            features = features.concat(apple_distance)
+            features = features.concat(tail_distances)
+            features = this.normalize(features, grid_size)
+            
+            // # categorial features
+            possible_moves = this.hotEncodePossibleMoves(tail_distances)
+            apple_orientation = this.getAppleToSnakeOrientation(snake, apple, grid)
+            features += hotEncodeOrientation(apple_orientation)
+            features += hotEnodeDirection(direction)
+            features += possible_moves
+            return features
          },
          async play(step_time=1) {
             let grid = this.AppState.grid
@@ -220,11 +350,13 @@ function init() {
             let game_is_lost = false
 
             while (!game_is_lost) {
-               this.setGameState(grid, snake, direction, apple)
                grid = this.updateGrid(grid, snake, apple)
+               this.setGameState(grid, snake, direction, apple)
+               await this.sleep(step_time)
                
                // let new_direction = this.generateDirection()
                let new_direction =  this.netPredictNextDirection(direction, snake, apple, grid)
+               // let new_direction = this.getPushedDirection()
                direction = this.validateDirection(direction, new_direction)
                snake = this.advance(snake, direction, apple)
                
@@ -236,7 +368,6 @@ function init() {
                game_is_lost = this.check_collision(snake, grid_size)
                
                moves += 1
-               await this.sleep(step_time)
             }
          },
          triggerPlayButton() {
