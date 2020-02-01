@@ -2,6 +2,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # disable tensorflow debug info
 
 import tensorflow as tf
+import tensorflowjs as tfjs
 from tensorflow.keras import layers, models
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,6 +18,7 @@ model.summary()
 
 try:
    model.load_weights('best_weights')
+   tfjs.converters.save_keras_model(model, './model')
 except ValueError as e:
    print("No weights loaded: incompatible model structures.")
 
@@ -35,3 +37,7 @@ def get_model_weight_shapes():
    for layer_weights in weights:
       shapes.append(layer_weights.shape)
    return shapes
+
+if __name__ == "__main__":
+    model.load_weights('best_weights')
+    tfjs.converters.save_keras_model(model, './model')

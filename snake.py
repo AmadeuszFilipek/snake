@@ -130,7 +130,7 @@ def construct_feature_array(time_left, direction, snake, apple, grid):
    features = []
    grid_size = len(grid)
    # normalizable features
-   tail_distances = get_snake_to_tail_distance(snake, grid)
+   tail_distances = get_snake_to_obtacle_distance(snake, grid)
    apple_distance = get_snake_to_apple_distance(snake, apple, grid)
    features += apple_distance
    features += tail_distances

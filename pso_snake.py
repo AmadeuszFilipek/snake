@@ -125,4 +125,5 @@ if __name__ == "__main__":
    print("BEST COST: {}".format(cost))
    apply_parameters_to_model(pos)
    net.model.save_weights('best_weights')
+   tfjs.converters.save_keras_model(model, './model')
 
