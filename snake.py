@@ -9,7 +9,7 @@ import numpy as np
 
 from pynput.keyboard import Key, Listener
 
-import neural_net as net
+from neural_net import SnakeNet
 
 DIRECTIONS = ['left', 'up', 'right', 'down']
 OPTIONS = ['left', 'straight', 'right']
@@ -49,7 +49,6 @@ def get_snake_to_apple_distances(snake, apple, grid):
    return result
 
 def get_snake_to_obtacle_distance(snake, grid):
-   # this function is wrong implemented
    grid_size = len(grid)
    head = snake.pop()
    min_positive_dx = (grid_size - 1) - head.x
@@ -57,25 +56,25 @@ def get_snake_to_obtacle_distance(snake, grid):
    min_positive_dy = (grid_size - 1) - head.y
    min_negative_dy = head.y
 
-   for plus_x in range(1, min_positive_dx):
-      point = Point(head.x + plus_x, head.y)
+   for plus_x in range(0, min_positive_dx):
+      point = Point(head.x + plus_x + 1, head.y)
       if point in snake:
-         min_positive_dx = plus_x - 1
+         min_positive_dx = plus_x
          break
-   for minus_x in range(1, min_negative_dx):
-      point = Point(head.x - minus_x, head.y)
+   for minus_x in range(0, min_negative_dx):
+      point = Point(head.x - minus_x - 1, head.y)
       if point in snake:
-         min_negative_dx = minus_x - 1
+         min_negative_dx = minus_x
          break
-   for plus_y in range(1, min_positive_dy):
-      point = Point(head.x, head.y + plus_y)
+   for plus_y in range(0, min_positive_dy):
+      point = Point(head.x, head.y + plus_y + 1)
       if point in snake:
-         min_positive_dy = plus_y - 1
+         min_positive_dy = plus_y
          break
-   for minus_y in range(1, grid_size):
-      point = Point(head.x, head.y - minus_y)
+   for minus_y in range(0, min_negative_dy):
+      point = Point(head.x, head.y - minus_y - 1)
       if point in snake:
-         min_negative_dy = minus_y - 1
+         min_negative_dy = minus_y
          break
 
    snake.append(head)
@@ -109,6 +108,7 @@ def get_apple_to_snake_orientation(snake, apple, grid):
 def hot_encode_possible_moves(snake_to_tail_distances):
    hot_encoded_possibilities = [1, 1, 1, 1]
    for i, distance in enumerate(snake_to_tail_distances):
+      print(i, distance)
       if distance == 0:
          hot_encoded_possibilities[i] = 0
    
@@ -130,20 +130,21 @@ def construct_feature_array(time_left, direction, snake, apple, grid):
    features = []
    grid_size = len(grid)
    # normalizable features
-   tail_distances = get_snake_to_obtacle_distance(snake, grid)
+   obstacle_distances = get_snake_to_obtacle_distance(snake, grid)
    apple_distance = get_snake_to_apple_distance(snake, apple, grid)
-   features += apple_distance
-   features += tail_distances
+   # features += apple_distance
+   # features += obstacle_distances
    # features.append(time_left)
-   features = normalize(features, scale=grid_size)
+   # features = normalize(features, scale=grid_size)
    
    # categorial features
-   possible_moves = hot_encode_possible_moves(tail_distances)
+   possible_moves = hot_encode_possible_moves(obstacle_distances)
    apple_orientation = get_apple_to_snake_orientation(snake, apple, grid)
    apple_orientation = np.array(apple_orientation)
    features += hot_encode_orientation(apple_orientation)
-   features += hot_enode_direction(direction)
+   # features += hot_enode_direction(direction)
    features += possible_moves
+   print(possible_moves)
    return features
 
 def net_predict_next_move(time_left, direction, snake, apple, grid):
@@ -154,7 +155,7 @@ def net_predict_next_move(time_left, direction, snake, apple, grid):
    move = distribution_to_move(distribution)
    return move
 
-def net_predict_next_direction(time_left, direction, snake, apple, grid):
+def net_predict_next_direction(net, time_left, direction, snake, apple, grid):
    features = construct_feature_array(time_left, direction, snake, apple, grid)
    distribution = net.predict_next_move(features)
    direction = distribution_to_direction(distribution)
@@ -320,10 +321,10 @@ def control_direction(key):
    if d is not None:
       update_direction(d)
 
-def play(display=True, step_time=0.01, moves_to_lose=50, collision=True):
+def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=SnakeNet()):
    grid_size = 10
    grid = initialize_grid(grid_size=grid_size)
-   snake = initalize_snake(4, grid_size)
+   snake = initalize_snake(20, grid_size)
    apple = Point(x=5, y=5)
    direction = 'right'
    game_is_lost = False
@@ -339,7 +340,7 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True):
          if display: 
             print_(grid)
             
-         new_direction = net_predict_next_direction(moves_without_apple, direction, snake, apple, grid)
+         new_direction = net_predict_next_direction(net, moves_without_apple, direction, snake, apple, grid)
          direction = validate_direction(direction, new_direction)
          does_get_apple = advance(snake, direction, apple, grid)
 
@@ -372,11 +373,14 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True):
 
 
 if __name__ == "__main__":
+   net = SnakeNet()
+   net.load_weights()
    score, moves, avg_moves_to_get_apple = play(
    display=True, 
    step_time=0.05, 
    moves_to_lose=1000, 
-   collision=True
+   collision=True,
+   net=net
    )
 
    print(score, moves, avg_moves_to_get_apple)
