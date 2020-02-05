@@ -7,37 +7,47 @@ from tensorflow.keras import layers, models
 import matplotlib.pyplot as plt
 import numpy as np
 
-# elu, tanh, softplus
-model = models.Sequential()
-model.add(layers.Dense(22, activation='tanh',input_shape=(22,)))
-model.add(layers.Dense(16, activation='tanh'))
-model.add(layers.Dense(8, activation='tanh'))
-model.add(layers.Dense(4, activation='softmax'))
+class SnakeNet:
 
-model.summary()
+   def __init__(self):
+      # elu, tanh, softplus
+      self.model = models.Sequential()
+      self.model.add(layers.Dense(16, activation='tanh',input_shape=(16,)))
+      self.model.add(layers.Dense(16, activation='tanh'))
+      self.model.add(layers.Dense(8, activation='tanh'))
+      self.model.add(layers.Dense(4, activation='softmax'))
 
-try:
-   model.load_weights('best_weights')
-   tfjs.converters.save_keras_model(model, './model')
-except ValueError as e:
-   print("No weights loaded: incompatible model structures.")
+      # self.model.summary()
 
-def predict_next_move(features):
-   prepared_features = prepare_features(features)
-   result = model.predict(prepared_features)
-   return result[0].tolist()
+   def load_weights(self):
+      try:
+         self.model.load_weights('./model/best_weights')
+      except ValueError as e:
+         print("No weights loaded: incompatible model structures.")
+
+   def predict_next_move(self, features):
+      prepared_features = prepare_features(features)
+      result = self.model.predict(prepared_features)
+      return result[0].tolist()
+
+   def get_model_weight_shapes(self):
+      weights = self.model.get_weights()
+      shapes = []
+      for layer_weights in weights:
+         shapes.append(layer_weights.shape)
+      return shapes
+
+   def get_weights(self):
+      return self.model.get_weights()
 
 def prepare_features(features):
    wrap_batches = np.array([features]) # single batch
    return wrap_batches
 
-def get_model_weight_shapes():
-   weights = model.get_weights()
-   shapes = []
-   for layer_weights in weights:
-      shapes.append(layer_weights.shape)
-   return shapes
+net = SnakeNet()
+net.load_weights()
 
 if __name__ == "__main__":
-    model.load_weights('best_weights')
-    tfjs.converters.save_keras_model(model, './model')
+   net = SnakeNet()
+   net.load_weights()
+   tfjs.converters.save_keras_model(model, './model')

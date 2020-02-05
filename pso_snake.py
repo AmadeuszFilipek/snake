@@ -1,38 +1,79 @@
-from functools import reduce
 import numpy as np
-import math
+import itertools as it
 import matplotlib.pyplot as plt
+import random as rng
+import math
+from functools import reduce, wraps
+import multiprocessing as mp
+
 import pyswarms as ps
 
 from snake import play
-import neural_net as net
+from neural_net import SnakeNet, net
 
 def particlefy(function):
+   @wraps(function)
    def wrapper(particled_weights):
       particles = []
       for particle in particled_weights:
          particles.append(function(particle))
       return particles
+   # wrapper.__module__ = "__main__"
    return wrapper
 
 
-def apply_parameters_to_model(parameters):
+def apply_parameters_to_model(net, parameters):
    shapes = net.get_model_weight_shapes()
    weights = shape_parameters(shapes, parameters)
    net.model.set_weights(weights)
 
 @particlefy 
 def target_function(parameters):
-   apply_parameters_to_model(parameters)
-   points, moves, avg_moves_to_get_apple = play(
-   display=False,
-   step_time=0,
-   collision=True,
-   moves_to_lose=100
-   )
+   net = SnakeNet()
+   apply_parameters_to_model(net, parameters)
+   points = []
+   moves = []
+   tries = 1
 
+   for t in range(tries):
+      pts, mvs, avg_moves = play(
+         display=False,
+         step_time=0,
+         collision=True,
+         moves_to_lose=100,
+         net=net
+         )
+      points.append(pts)
+      moves.append(mvs)
+   # pool = mp.Pool(processes=3)
+   # args = it.repeat(parameters, tries)
+   # results = pool.map(worker_function, args)
+
+   # points = [r[0] for r in results]
+   # moves = [r[1] for r in results]
+   
+   avg_points = sum(points) / len(points)
+   avg_moves = sum(moves) / len(moves)
+
+   return cost_function(avg_points, avg_moves)
+
+def worker_function(parameters):
+   net = SnakeNet()
+   apply_parameters_to_model(net, parameters)
+   pts, mvs, avg_moves = play(
+      display=False,
+      step_time=0,
+      collision=True,
+      moves_to_lose=100,
+      net=net
+      )
+   return pts, mvs
+
+def cost_function(points, moves):
    # minus sign for minimization
-   return -1 * points / avg_moves_to_get_apple * math.exp(points)  - moves
+   result = - 1 * points * points * math.exp(points) \
+            - moves + points * math.sqrt(moves)
+   return result
 
 @particlefy 
 def target_collision_function(parameters):
@@ -94,18 +135,50 @@ def create_bounds(dimensions):
    min_bound = 0 * max_bound
    bounds = (min_bound, max_bound)
 
-def run_optimisation(target_function, iterations=10, particles=15):
+def randomize_old_positions(previous_best, particles):
+   particle_positions = []
+
+   for p in range(particles):
+      random_table = 1 * np.random.rand(len(previous_best)) - 0.5
+      randomized_pos = np.multiply(previous_best, random_table)
+      particle_positions.append(randomized_pos)
+
+   result = np.array(particle_positions)
+   return result
+
+def get_previous_best_pos(net):
+   flattened_weights = []
+   best_weights = net.model.get_weights()
+   for layer_weights in best_weights:
+      flattened_weights += (layer_weights.flatten().tolist())
+
+   return np.array(flattened_weights)
+
+def run_optimisation(net, target_function, iterations=10, particles=15, use_old_pos=True):
    dimensions = total_parameters(net.get_model_weight_shapes())
-   options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9}
-   bounds = create_bounds(dimensions)
+   options = {'c1': 0.5, 'c2': 0.3, 'w': 0.7}
+   
 
-   optimizer = ps.single.GlobalBestPSO(
-      n_particles=particles,
-      dimensions=dimensions,
-      options=options)
-   cost, pos = optimizer.optimize(target_function, iters=iterations)
-   plot_history(optimizer.cost_history)
-
+   if use_old_pos:
+      net.load_weights()
+      old_positions = get_previous_best_pos(net)
+      optimizer = ps.single.GlobalBestPSO(
+         n_particles=particles,
+         dimensions=dimensions,
+         options=options,
+         init_pos=randomize_old_positions(old_positions, particles))
+   else:
+      optimizer = ps.single.GlobalBestPSO(
+         n_particles=particles,
+         dimensions=dimensions,
+         options=options)
+   try:
+      cost, pos = optimizer.optimize(target_function, iters=iterations, n_processes=3)
+      plot_history(optimizer.cost_history)
+   except KeyboardInterrupt:
+      cost = final_best_cost = optimizer.swarm.best_cost.copy()
+      pos = optimizer.swarm.pbest_pos[optimizer.swarm.pbest_cost.argmin()].copy()
+   
    return cost, pos
 
 def plot_history(history):
@@ -116,14 +189,17 @@ def plot_history(history):
    plt.show()
 
 if __name__ == "__main__":
+   mp.set_start_method('spawn', force=True)
+
    cost, pos = run_optimisation(
+      net,
       target_function,
-      iterations=1000,
-      particles=10
+      iterations=200,
+      particles=30,
+      use_old_pos=True
    )
 
    print("BEST COST: {}".format(cost))
-   apply_parameters_to_model(pos)
-   net.model.save_weights('best_weights')
-   tfjs.converters.save_keras_model(model, './model')
+   apply_parameters_to_model(net, pos)
+   net.model.save_weights('./model/best_weights')
 
