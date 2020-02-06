@@ -12,9 +12,9 @@ class SnakeNet:
    def __init__(self):
       # elu, tanh, softplus
       self.model = models.Sequential()
-      self.model.add(layers.Dense(16, activation='tanh',input_shape=(16,)))
-      self.model.add(layers.Dense(16, activation='tanh'))
-      self.model.add(layers.Dense(8, activation='tanh'))
+      self.model.add(layers.Dense(16, activation='relu',input_shape=(16,)))
+      # self.model.add(layers.Dense(16, activation='relu'))
+      self.model.add(layers.Dense(8, activation='relu'))
       self.model.add(layers.Dense(4, activation='softmax'))
 
       # self.model.summary()
@@ -43,9 +43,6 @@ class SnakeNet:
 def prepare_features(features):
    wrap_batches = np.array([features]) # single batch
    return wrap_batches
-
-net = SnakeNet()
-net.load_weights()
 
 if __name__ == "__main__":
    net = SnakeNet()

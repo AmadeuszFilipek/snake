@@ -9,7 +9,7 @@ import multiprocessing as mp
 import pyswarms as ps
 
 from snake import play
-from neural_net import SnakeNet, net
+from neural_net import SnakeNet
 
 def particlefy(function):
    @wraps(function)
@@ -33,7 +33,7 @@ def target_function(parameters):
    apply_parameters_to_model(net, parameters)
    points = []
    moves = []
-   tries = 1
+   tries = 5
 
    for t in range(tries):
       pts, mvs, avg_moves = play(
@@ -135,11 +135,20 @@ def create_bounds(dimensions):
    min_bound = 0 * max_bound
    bounds = (min_bound, max_bound)
 
+def randomize_positions(dimensions, particles):
+   particle_positions = []
+   for p in range(particles):
+      random_table = 4 * np.random.rand(dimensions) - 2
+      particle_positions.append(random_table)
+
+   result = np.array(particle_positions)
+   return result
+
 def randomize_old_positions(previous_best, particles):
    particle_positions = []
 
    for p in range(particles):
-      random_table = 1 * np.random.rand(len(previous_best)) - 0.5
+      random_table = 0.4 * np.random.rand(len(previous_best)) + 0.8
       randomized_pos = np.multiply(previous_best, random_table)
       particle_positions.append(randomized_pos)
 
@@ -156,7 +165,7 @@ def get_previous_best_pos(net):
 
 def run_optimisation(net, target_function, iterations=10, particles=15, use_old_pos=True):
    dimensions = total_parameters(net.get_model_weight_shapes())
-   options = {'c1': 0.5, 'c2': 0.3, 'w': 0.7}
+   options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9}
    
 
    if use_old_pos:
@@ -166,15 +175,17 @@ def run_optimisation(net, target_function, iterations=10, particles=15, use_old_
          n_particles=particles,
          dimensions=dimensions,
          options=options,
-         init_pos=randomize_old_positions(old_positions, particles))
+         init_pos=randomize_old_positions(old_positions, particles)
+         )
    else:
       optimizer = ps.single.GlobalBestPSO(
          n_particles=particles,
          dimensions=dimensions,
-         options=options)
+         options=options,
+         init_pos=randomize_positions(dimensions, particles)
+         )
    try:
       cost, pos = optimizer.optimize(target_function, iters=iterations, n_processes=3)
-      plot_history(optimizer.cost_history)
    except KeyboardInterrupt:
       cost = final_best_cost = optimizer.swarm.best_cost.copy()
       pos = optimizer.swarm.pbest_pos[optimizer.swarm.pbest_cost.argmin()].copy()
@@ -190,12 +201,12 @@ def plot_history(history):
 
 if __name__ == "__main__":
    mp.set_start_method('spawn', force=True)
-
+   net = SnakeNet()
    cost, pos = run_optimisation(
       net,
       target_function,
-      iterations=200,
-      particles=30,
+      iterations=50,
+      particles=50,
       use_old_pos=True
    )
 

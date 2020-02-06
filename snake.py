@@ -9,7 +9,7 @@ import numpy as np
 
 from pynput.keyboard import Key, Listener
 
-from neural_net import net
+from neural_net import SnakeNet
 
 DIRECTIONS = ['left', 'up', 'right', 'down']
 OPTIONS = ['left', 'straight', 'right']
@@ -300,8 +300,8 @@ def initalize_snake(length, grid_size):
 def generate_snake(length, grid_size):
    if length < 1: raise ValueError("Invalid snake length")
    snake = deque()
-   x, y = int(grid_size / 2 * rnd.random() + length), \
-          int(grid_size / 2 * rnd.random() + length)
+   x, y = int(grid_size / length * rnd.random() + length), \
+          int(grid_size / length * rnd.random() + length)
    snake.append(Point(x=x, y=y))
    direction = rnd.choice(DIRECTIONS)
 
@@ -369,10 +369,10 @@ def move_point(point, direction):
    
    raise ValueError("move_point: Invalid direction {}".format(direction))
 
-def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=net):
+def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=SnakeNet()):
    grid_size = 10
    grid = initialize_grid(grid_size=grid_size)
-   snake, direction = generate_snake(3, grid_size) 
+   snake, direction = generate_snake(4, grid_size) 
    apple = generate_new_apple(snake, grid_size)
 
    game_is_lost = False
@@ -421,6 +421,8 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=net
 
 
 if __name__ == "__main__":
+   net = SnakeNet()
+   net.load_weights()
    score, moves, avg_moves_to_get_apple = play(
    display=True, 
    step_time=0.05, 
