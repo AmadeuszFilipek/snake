@@ -372,6 +372,158 @@ class TestSnake(unittest.TestCase):
       expected = 'down'
       self.assertEqual(result, expected)
    
+   def test_tail_direction_right(self):
+      sn = deque()
+      sn.append(Point(0, 0))
+      sn.append(Point(0, 1))
+      result = snake.get_tail_direction(sn)
+      expected = 'right'
+      self.assertEqual(result, expected)
 
+   def test_tail_direction_right(self):
+      sn = deque()
+      sn.append(Point(5, 5))
+      sn.append(Point(5, 4))
+      result = snake.get_tail_direction(sn)
+      expected = 'left'
+      self.assertEqual(result, expected)
+
+   def test_tail_direction_right(self):
+      sn = deque()
+      sn.append(Point(5, 5))
+      sn.append(Point(4, 5))
+      result = snake.get_tail_direction(sn)
+      expected = 'up'
+      self.assertEqual(result, expected)
+
+   def test_tail_direction_right(self):
+      sn = deque()
+      sn.append(Point(5, 5))
+      sn.append(Point(6, 5))
+      result = snake.get_tail_direction(sn)
+      expected = 'down'
+      self.assertEqual(result, expected)
+
+   def test_snake_to_wall_distance_corner1(self):
+      sn = deque()
+      sn.append(Point(0, 0))
+      result = snake.get_snake_to_wall_distance(sn, self.grid)
+      expected = [1, 1, 10, 10]
+      self.assertEqual(result, expected)
+
+   def test_snake_to_wall_distance_corner2(self):
+      sn = deque()
+      sn.append(Point(0, 9))
+      result = snake.get_snake_to_wall_distance(sn, self.grid)
+      expected = [10, 1, 1, 10]
+      self.assertEqual(result, expected)
+   
+   def test_snake_to_wall_distance_corner3(self):
+      sn = deque()
+      sn.append(Point(9, 0))
+      result = snake.get_snake_to_wall_distance(sn, self.grid)
+      expected = [1, 10, 10, 1]
+      self.assertEqual(result, expected)
+   
+   def test_snake_to_wall_distance_corner4(self):
+      sn = deque()
+      sn.append(Point(9, 9))
+      result = snake.get_snake_to_wall_distance(sn, self.grid)
+      expected = [10, 10, 1, 1]
+      self.assertEqual(result, expected)
+   
+   def test_snake_to_wall_distance_middle(self):
+      sn = deque()
+      sn.append(Point(5, 5))
+      result = snake.get_snake_to_wall_distance(sn, self.grid)
+      expected = [6, 6, 5, 5]
+      self.assertEqual(result, expected)
+
+   def test_snake_tail_vision_empty(self):
+      sn = deque()
+      sn.append(Point(5,5))
+      result = snake.get_snake_tail_vision(sn)
+      expected = [0 ,0 ,0 ,0 ,0 ,0 ,0 ,0]
+      self.assertEqual(result, expected)
+
+   def test_snake_tail_vision_surrounded(self):
+      sn = deque()
+      sn.append(Point(x=4, y=4))
+      sn.append(Point(x=4, y=5))
+      sn.append(Point(x=4, y=6))
+      sn.append(Point(x=5, y=6))
+      sn.append(Point(x=6, y=6))
+      sn.append(Point(x=6, y=5))
+      sn.append(Point(x=6, y=4))
+      sn.append(Point(x=5, y=4))
+      sn.append(Point(x=5, y=5))
+      result = snake.get_snake_tail_vision(sn)
+      expected = [1 ,1 ,1 ,1 ,1 ,1 ,1 ,1]
+      self.assertEqual(result, expected)
+
+   def test_snake_tail_vision_north(self):
+      sn = deque()
+      sn.append(Point(4,5))
+      sn.append(Point(5,5))
+      result = snake.get_snake_tail_vision(sn)
+      expected = [1 ,0 ,0 ,0 ,0 ,0 ,0 ,0]
+      self.assertEqual(result, expected)
+
+   def test_snake_tail_vision_ne(self):
+      sn = deque()
+      sn.append(Point(4,6))
+      sn.append(Point(5,5))
+      result = snake.get_snake_tail_vision(sn)
+      expected = [0 ,1 ,0 ,0 ,0 ,0 ,0 ,0]
+      self.assertEqual(result, expected)
+
+   def test_snake_tail_vision_east(self):
+      sn = deque()
+      sn.append(Point(5,6))
+      sn.append(Point(5,5))
+      result = snake.get_snake_tail_vision(sn)
+      expected = [0 ,0 ,1 ,0 ,0 ,0 ,0 ,0]
+      self.assertEqual(result, expected)
+
+   def test_snake_tail_vision_es(self):
+      sn = deque()
+      sn.append(Point(6,6))
+      sn.append(Point(5,5))
+      result = snake.get_snake_tail_vision(sn)
+      expected = [0 ,0 ,0 ,1 ,0 ,0 ,0 ,0]
+      self.assertEqual(result, expected)
+
+   def test_snake_tail_vision_south(self):
+      sn = deque()
+      sn.append(Point(6,5))
+      sn.append(Point(5,5))
+      result = snake.get_snake_tail_vision(sn)
+      expected = [0 ,0 ,0 ,0 ,1 ,0 ,0 ,0]
+      self.assertEqual(result, expected)
+
+   def test_snake_tail_vision_sw(self):
+      sn = deque()
+      sn.append(Point(6,4))
+      sn.append(Point(5,5))
+      result = snake.get_snake_tail_vision(sn)
+      expected = [0 ,0 ,0 ,0 ,0 ,1 ,0 ,0]
+      self.assertEqual(result, expected)
+
+   def test_snake_tail_vision_west(self):
+      sn = deque()
+      sn.append(Point(5,4))
+      sn.append(Point(5,5))
+      result = snake.get_snake_tail_vision(sn)
+      expected = [0 ,0 ,0 ,0 ,0 ,0 ,1 ,0]
+      self.assertEqual(result, expected)
+
+   def test_snake_tail_vision_wn(self):
+      sn = deque()
+      sn.append(Point(4,4))
+      sn.append(Point(5,5))
+      result = snake.get_snake_tail_vision(sn)
+      expected = [0 ,0 ,0 ,0 ,0 ,0 ,0 ,1]
+      self.assertEqual(result, expected)
+      
 if __name__ == '__main__':
     unittest.main()

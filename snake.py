@@ -17,6 +17,13 @@ WORLD_ROSE = ['north', 'ne', 'east', 'es', 'south', 'sw', 'west', 'wn']
 
 Point = namedtuple('Point', ['x', 'y'])
 
+def get_tail_direction(snake):
+   tail = snake[0]
+   next_part = snake[1]
+   for direction in DIRECTIONS:
+      if move_point(tail, direction) == next_part:
+         return direction
+
 def get_snake_to_apple_distance(snake, apple):
    head = snake[-1]
    x_distance = abs(head.x - apple.x)
@@ -46,6 +53,18 @@ def get_snake_to_apple_distances(snake, apple, grid_size):
       positive_distance_y, negative_distance_y
    ]
    return result
+
+def get_snake_tail_vision(snake):
+   tail = snake.copy()
+   head = tail.pop()
+   orientations = set()
+   for t in tail:
+      cell_orientation = get_point_to_point_orientation(head, t)
+      orientations.add(cell_orientation)
+   
+   vision = [1 if o in orientations else 0 for o in WORLD_ROSE]
+   
+   return vision
 
 def get_snake_to_obtacle_distance(snake, grid_size):
    head = snake.pop()
@@ -82,28 +101,32 @@ def get_snake_to_obtacle_distance(snake, grid_size):
    ]
    return result
 
+def get_point_to_point_orientation(center, other):
+   '''Return the orientation of other from the center'''
+   if center.y == other.y:
+      y_orientation = {'north', 'south'}
+   elif center.y > other.y:
+      y_orientation = {'sw', 'west', 'wn'}
+   else:
+      y_orientation = {'ne', 'east', 'es'}
+   
+   if center.x == other.x:
+      x_orientation = {'east', 'west'}
+   elif center.x > other.x:
+      x_orientation = {'wn', 'north', 'ne'}
+   else:
+      x_orientation = {'es', 'south', 'sw'}
+
+   orientation = x_orientation.intersection(y_orientation).pop()
+
+   return orientation
+
 def get_apple_to_snake_orientation(snake, apple):
    if gets_apple(snake, apple):
       raise ValueError("Invalid state: snake on apple")
-
-   snake_head = snake[-1]
-   if snake_head.y == apple.y:
-      apple_y_orientation = {'north', 'south'}
-   elif snake_head.y > apple.y:
-      apple_y_orientation = {'sw', 'west', 'wn'}
-   else:
-      apple_y_orientation = {'ne', 'east', 'es'}
    
-   if snake_head.x == apple.x:
-      apple_x_orientation = {'east', 'west'}
-   elif snake_head.x > apple.x:
-      apple_x_orientation = {'wn', 'north', 'ne'}
-   else:
-      apple_x_orientation = {'es', 'south', 'sw'}
-
-   orientation = apple_x_orientation.intersection(
-      apple_y_orientation).pop()
-
+   snake_head = snake[-1]
+   orientation = get_point_to_point_orientation(snake_head, apple)
    return orientation
 
 def hot_encode_possible_moves(snake_to_tail_distances):
@@ -113,6 +136,15 @@ def hot_encode_possible_moves(snake_to_tail_distances):
          hot_encoded_possibilities[i] = 0
    
    return hot_encoded_possibilities
+
+def get_snake_to_wall_distance(snake, grid_size):
+   head = snake[-1]
+   distance_to_left = head.y + 1
+   distance_to_up = head.x + 1
+   distance_to_right = grid_size - head.y
+   distance_to_down = grid_size - head.x
+   result = [distance_to_left, distance_to_up, distance_to_right, distance_to_down] 
+   return result
 
 def get_obstacle_vision(snake, grid_size):
    ''' binary vision, 1 if path is clear, -1 if obstacle '''
