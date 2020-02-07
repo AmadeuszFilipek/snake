@@ -176,16 +176,26 @@ def hot_enode_direction(direction):
    one_hots = list(map(lambda x: int(x == direction), DIRECTIONS))
    return one_hots
 
-def normalize(features, scale=1):
-   feature_array = [f / scale for f in features]
+def normalize(features):
+   feature_array = [1 / f for f in features]
    return feature_array
 
 def construct_feature_array(time_left, direction, snake, apple, grid_size):
    features = []
+   
+   features += get_snake_to_wall_distance(snake, grid_size)
+   features = normalize(features)
 
    apple_orientation = get_apple_to_snake_orientation(snake, apple)
    features += hot_encode_orientation(apple_orientation)
-   features += get_obstacle_vision(snake, grid_size)
+   
+   tail_direction = get_tail_direction(snake)
+   features += hot_enode_direction(tail_direction)
+
+   featuers += hot_encode_direction(direction)
+   
+   features += get_snake_tail_vision(snake)
+
    return features
 
 def net_predict_next_move(time_left, direction, snake, apple, grid):
