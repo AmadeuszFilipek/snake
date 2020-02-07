@@ -12,16 +12,20 @@ class SnakeNet:
    def __init__(self):
       # elu, tanh, softplus
       self.model = models.Sequential()
-      self.model.add(layers.Dense(16, activation='relu',input_shape=(16,)))
-      # self.model.add(layers.Dense(16, activation='relu'))
+      self.model.add(layers.Dense(28, activation='relu',input_shape=(28,)))
+      self.model.add(layers.Dense(16, activation='relu'))
       self.model.add(layers.Dense(8, activation='relu'))
       self.model.add(layers.Dense(4, activation='softmax'))
 
-      # self.model.summary()
+   def summary(self):
+      self.model.summary()
 
-   def load_weights(self):
+   def save_model(path):
+      tfjs.converters.save_keras_model(self.model, path)
+
+   def load_weights(self, path):
       try:
-         self.model.load_weights('./model/best_weights')
+         self.model.load_weights(path)
       except ValueError as e:
          print("No weights loaded: incompatible model structures.")
 
@@ -41,10 +45,11 @@ class SnakeNet:
       return self.model.get_weights()
 
 def prepare_features(features):
-   wrap_batches = np.array([features]) # single batch
+   # single batch
+   wrap_batches = np.array([features])
    return wrap_batches
 
-if __name__ == "__main__":
-   net = SnakeNet()
-   net.load_weights()
-   tfjs.converters.save_keras_model(model, './model')
+# if __name__ == "__main__":
+#    net = SnakeNet()
+#    net.load_weights()
+#    tfjs.converters.save_keras_model(model, './model')

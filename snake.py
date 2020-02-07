@@ -182,7 +182,7 @@ def normalize(features):
 
 def construct_feature_array(time_left, direction, snake, apple, grid_size):
    features = []
-   
+
    features += get_snake_to_wall_distance(snake, grid_size)
    features = normalize(features)
 
@@ -464,7 +464,6 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
 
 if __name__ == "__main__":
    net = SnakeNet()
-   net.load_weights()
    score, moves, avg_moves_to_get_apple = play(
    display=True, 
    step_time=0.05, 

@@ -18,7 +18,6 @@ def particlefy(function):
       for particle in particled_weights:
          particles.append(function(particle))
       return particles
-   # wrapper.__module__ = "__main__"
    return wrapper
 
 
@@ -165,7 +164,7 @@ def get_previous_best_pos(net):
 
 def run_optimisation(net, target_function, iterations=10, particles=15, use_old_pos=True):
    dimensions = total_parameters(net.get_model_weight_shapes())
-   options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9}
+   options = {'c1': 0.5 , 'c2': 0.3, 'w': 0.9}
    
 
    if use_old_pos:
@@ -205,8 +204,8 @@ if __name__ == "__main__":
    cost, pos = run_optimisation(
       net,
       target_function,
-      iterations=50,
-      particles=50,
+      iterations=4,
+      particles=1,
       use_old_pos=True
    )
 
