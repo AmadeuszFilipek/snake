@@ -3,6 +3,9 @@ import random as rng
 from collections import namedtuple
 from multiprocessing import Pool
 import itertools as it
+import os
+import glob
+import json
 
 Bounds = namedtuple('Bounds', ['min', 'max'])
 Bin = namedtuple('Bin', ['min', 'max'])
@@ -13,6 +16,8 @@ PARENT_RATE = 0.5
 MUTATION_DEVIATION = 0.01
 
 def generate_individual(dimensions, bounds):
+   if bounds.max < bounds.min:
+      raise ValueError("Invalid bounds: {}".format(bounds))
    span = bounds.max - bounds.min
    random_table = span * np.random.rand(dimensions) + bounds.min
    return Individual(gene=random_table, cost=0)
@@ -27,26 +32,33 @@ def cost_iterator(population):
 
 def construct_bins(population):
    cost_sum = sum(cost_iterator(population))
-   bin_points = [0] + [abs(i.cost / cost_sum) for i in population]
+   # no weights, uniform probability
+   if cost_sum == 0:
+      bin_points = [1 / len(population) for i in population]
+   else:
+      bin_points = [abs(i.cost / cost_sum) for i in population]
    
-   bins = []
-   for i in range(bin_points - 1):
-      single_bin = Bin(min=bin_points[i], max=bin_points[i + 1])
+   bins = [Bin(min=0, max=bin_points[0])]
+   for i in range(1, len(bin_points)):
+      min_point = bins[i - 1].max
+      max_point = min_point + bin_points[i]
+      single_bin = Bin(min=min_point, max=max_point)
       bins.append(single_bin)
 
    return bins
 
+def number_in_bin(n, b):
+   return (n > b.min) and (n < b.max)
+
 def select_mating_pool(population, parents_pool_size):
    ''' implementation allows same parent multiple times '''
-   # THIS IS FINE
    parents = []
-
    bins = construct_bins(population)
 
    for _ in range(parents_pool_size):
       random = rng.random()
       for b, individual in zip(bins, population):
-         if random > b.min and random < b.max:
+         if number_in_bin(random, b): 
             parents.append(individual)
             break
       
@@ -86,7 +98,7 @@ def crossover(parents, offspring_size):
 
    return children
 
-def evaluate_fitness(population, workers=1):
+def evaluate_fitness(target, population, workers=1):
    
    genes = gene_iterator(population)
    if workers > 1:
@@ -99,15 +111,46 @@ def evaluate_fitness(population, workers=1):
    for i in range(len(population)):
       population[i].cost = cost[i]
 
-def mutate(population, mutated_pool_size):
-   ''' mutate whole population by 10% of genome or mutate 10% of population by whole genome ?!?!''' 
-   group_to_be_mutated = rng.sample(population, k=mutated_pool_size)
-   
-   for mutant in group_to_be_mutated:
-      for gene in mutant.gene:
+def mutate(population):
+
+   for mutant in population:
+      expected_number_of_mutations = len(mutant.gene) * MUTATION_PROBABILITY
+      genome_ids_to_mutate = rng.sample(range(mutant.gene), k=expected_number_of_mutations)
+
+      for genome_id in genome_ids_to_mutate:
          mutagen = rng.normalvariate(mu=0, sigma=MUTATION_DEVIATION)
+         mutant.gene[genome_id] += mutagen
+
+def reconstruct_specimen(data):
+   gene = data[0]
+   cost = data[1]
+   specimen = Individual(gene=gene, cost=cost)
+   return specimen
+
+def load_population(load_directory):
+   if not os.path.isdir(load_directory):
+      raise ValueError('Is not a directory: ' + load_directory)
    
+   json_file_paths = glob.glob(load_directory + '/*.json')
+   
+   population = []
+   for file_path in json_file_paths:
+      with open(file_path, 'r') as file:
+         data = json.load(file)
       
+      specimen = reconstruct_specimen(data)
+      population.append(specimen)
+   
+   return population
+
+def save_population(directory, population):
+   if not os.path.isdir(directory):
+      os.makedirs(directory)
+
+   for i, specimen in enumerate(population):
+      name = 'snake_{}.json'.format(i)
+      with open(directory + '/' + name, 'w') as file:
+         serialized_specimen = json.dump(specimen, file)
 
 def evolution_optimise(
       target,
@@ -118,7 +161,8 @@ def evolution_optimise(
       load_population=False,
       load_directory=None,
       workers=1,
-      save_population=True
+      save_population=True,
+      display=True
    ):
 
    if population_size % 2 == 1:
@@ -126,7 +170,6 @@ def evolution_optimise(
    
    parent_pool_size = int(population_size * PARENT_RATE / 2) * 2
    offspring_size = population_size - parent_pool_size
-   mutated_pool_size = int(population_size * MUTATION_PROBABILITY)
 
    # inicialize population
    if load_population:
@@ -140,20 +183,26 @@ def evolution_optimise(
    for gen in range(generations):
 
       # evaluate fitness
-      evaluate_fitness(population, workers=workers)
+      evaluate_fitness(target, population, workers=workers)
       
       # display the results
+      if display:
+         print("Generation {}/{}: best cost: {:.2e}".format(gene, generations, best_individual.cost))
+
       # save the population
-      # check finish conditions
+      save_population(population, save_directory)
+
+      # any finish conditions here
       # check timer conditions
-      
-      # continue
-   
+      if is_evolution_timed_out():
+         break
+
+      # continue iteration   
       parents = select_mating_pool(population, parent_pool_size)
 
       children = crossover(parents, offspring_size)
       population = parents + children
-      
-      mutate(population, mutated_pool_size)
+      mutate(population)
 
    return best_individual
+
