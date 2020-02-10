@@ -6,6 +6,7 @@ import itertools as it
 import os
 import glob
 import json
+import time
 
 Bounds = namedtuple('Bounds', ['min', 'max'])
 Bin = namedtuple('Bin', ['min', 'max'])
@@ -102,7 +103,7 @@ def evaluate_fitness(target, population, workers=1):
    
    genes = gene_iterator(population)
    if workers > 1:
-      pool = Pool(processes=3)
+      pool = Pool(processes=workers)
       cost = pool.map(target, genes)
    else:
       cost = [target(g) for g in genes]
@@ -162,12 +163,14 @@ def evolution_optimise(
       load_directory=None,
       workers=1,
       save_population=True,
-      display=True
+      display=True,
+      allowed_seconds=None,
    ):
 
    if population_size % 2 == 1:
       raise ValueError("Current implementation requires even number of population size")
    
+   clock_start = time.time()
    parent_pool_size = int(population_size * PARENT_RATE / 2) * 2
    offspring_size = population_size - parent_pool_size
 
@@ -184,6 +187,11 @@ def evolution_optimise(
 
       # evaluate fitness
       evaluate_fitness(target, population, workers=workers)
+
+      # find the best one
+      for p in population:
+         if p.cost < best_individual.cost:
+            best_individual = p
       
       # display the results
       if display:
@@ -192,12 +200,15 @@ def evolution_optimise(
       # save the population
       save_population(population, save_directory)
 
-      # any finish conditions here
       # check timer conditions
-      if is_evolution_timed_out():
+      clock = time.time()
+      elapsed_seconds = clock_start - clock
+      if elapsed_seconds > allowed_seconds:
+         if display:
+            print("Evolution loop ran out of time. Finishing optimisation. Total runtime:")
          break
 
-      # continue iteration   
+      # continue iteration
       parents = select_mating_pool(population, parent_pool_size)
 
       children = crossover(parents, offspring_size)
