@@ -125,13 +125,11 @@ def mutate(population):
       expected_number_of_mutations = int(gene_length * MUTATION_PROBABILITY)
       genome_ids_to_mutate = rng.sample(range(gene_length), k=expected_number_of_mutations)
       
-      mutated_gene = mutant.gene.copy()
-
       for genome_id in genome_ids_to_mutate:
          mutagen = rng.normalvariate(mu=0, sigma=MUTATION_DEVIATION)
          mutated_gene[genome_id] += mutagen
-
-      mutant.gene = mutated_gene
+      
+      
 
 def reconstruct_specimen(data):
    gene = data[0]
@@ -203,7 +201,8 @@ def evolution_optimise(
       # find the best one
       for p in population:
          if p.cost < best_individual.cost:
-            best_individual = Individual(gene=p.gene, cost=p.cost)
+            best_gene = p.gene.copy()
+            best_individual = Individual(gene=best_gene, cost=p.cost)
       
       # display the results
       if display:
