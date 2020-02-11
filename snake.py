@@ -11,11 +11,22 @@ from pynput.keyboard import Key, Listener
 
 from neural_net import SnakeNet
 
+Point = namedtuple('Point', ['x', 'y'])
+
 DIRECTIONS = ['left', 'up', 'right', 'down']
 OPTIONS = ['left', 'straight', 'right']
 WORLD_ROSE = ['north', 'ne', 'east', 'es', 'south', 'sw', 'west', 'wn']
+ORIENTATION_TO_POINT = {
+   'north' : Point(x=-1, y= 0),
+   'ne'    : Point(x=-1, y= 1),
+   'east'  : Point(x= 0, y= 1),
+   'es'    : Point(x= 1, y= 1),
+   'south' : Point(x= 1, y= 0),
+   'sw'    : Point(x= 1, y=-1),
+   'west'  : Point(x= 0, y=-1),
+   'wn'    : Point(x=-1, y=-1)
+}
 
-Point = namedtuple('Point', ['x', 'y'])
 
 def get_tail_direction(snake):
    tail = snake[0]
@@ -66,40 +77,58 @@ def get_snake_tail_vision(snake):
    
    return vision
 
-def get_snake_to_obtacle_distance(snake, grid_size):
-   head = snake.pop()
-   min_positive_dx = (grid_size - 1) - head.x
-   min_negative_dx = head.x
-   min_positive_dy = (grid_size - 1) - head.y
-   min_negative_dy = head.y
+def get_snake_to_tail_distance(head, tail, orientation, grid_size):
+   distance = np.inf
+   
+   vector_point = ORIENTATION_TO_POINT[orientation]
 
-   for plus_x in range(0, min_positive_dx):
-      point = Point(head.x + plus_x + 1, head.y)
-      if point in snake:
-         min_positive_dx = plus_x
+   for i in range(1, grid_size):
+      point = Point(head.x + i * vector_point.x, head.y + i * vector_point.y)
+      if point.x >= grid_size or point.y >= grid_size:
          break
-   for minus_x in range(0, min_negative_dx):
-      point = Point(head.x - minus_x - 1, head.y)
-      if point in snake:
-         min_negative_dx = minus_x
+      if point in tail:
+         distance = i
          break
-   for plus_y in range(0, min_positive_dy):
-      point = Point(head.x, head.y + plus_y + 1)
-      if point in snake:
-         min_positive_dy = plus_y
-         break
-   for minus_y in range(0, min_negative_dy):
-      point = Point(head.x, head.y - minus_y - 1)
-      if point in snake:
-         min_negative_dy = minus_y
-         break
+   
+   return distance
 
-   snake.append(head)
-   result = [
-      min_negative_dy, min_negative_dx,
-      min_positive_dy, min_positive_dx
-   ]
-   return result
+def get_snake_to_tail_distances(snake, grid_size):
+   tail = snake.copy()
+   head = tail.pop()
+
+   distances = []
+   for orientation in WORLD_ROSE:
+      dist = get_snake_to_tail_distance(head, tail, orientation, grid_size)
+      distances.append(dist)
+
+   return distances
+
+   # for plus_x in range(1, min_positive_dx):
+   #    point = Point(head.x + plus_x + 1, head.y)
+   #    if point in snake_copy:
+   #       min_positive_dx = plus_x
+   #       break
+   # for minus_x in range(0, min_negative_dx):
+   #    point = Point(head.x - minus_x - 1, head.y)
+   #    if point in snake_copy:
+   #       min_negative_dx = minus_x
+   #       break
+   # for plus_y in range(0, min_positive_dy):
+   #    point = Point(head.x, head.y + plus_y + 1)
+   #    if point in snake_copy:
+   #       min_positive_dy = plus_y
+   #       break
+   # for minus_y in range(0, min_negative_dy):
+   #    point = Point(head.x, head.y - minus_y - 1)
+   #    if point in snake_copy:
+   #       min_negative_dy = minus_y
+   #       break
+
+   # result = [
+   #    min_negative_dy, min_negative_dx,
+   #    min_positive_dy, min_positive_dx
+   # ]
+   # return result
 
 def get_point_to_point_orientation(center, other):
    '''Return the orientation of other from the center'''
@@ -172,7 +201,7 @@ def hot_encode_orientation(orientation):
    one_hots = list(map(lambda x: int(x == orientation), WORLD_ROSE))
    return one_hots
 
-def hot_enode_direction(direction):
+def hot_encode_direction(direction):
    one_hots = list(map(lambda x: int(x == direction), DIRECTIONS))
    return one_hots
 
@@ -184,17 +213,19 @@ def construct_feature_array(time_left, direction, snake, apple, grid_size):
    features = []
 
    features += get_snake_to_wall_distance(snake, grid_size)
+   
+   features += get_snake_to_tail_distances(snake, grid_size)
+
    features = normalize(features)
+
 
    apple_orientation = get_apple_to_snake_orientation(snake, apple)
    features += hot_encode_orientation(apple_orientation)
    
    tail_direction = get_tail_direction(snake)
-   features += hot_enode_direction(tail_direction)
+   features += hot_encode_direction(tail_direction)
 
-   featuers += hot_encode_direction(direction)
-   
-   features += get_snake_tail_vision(snake)
+   features += hot_encode_direction(direction)
 
    return features
 
