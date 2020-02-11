@@ -6,7 +6,7 @@ import math
 from functools import reduce, wraps
 import multiprocessing as mp
 
-import pyswarms as ps
+from evolution import evolution_optimise
 
 from snake import play
 from neural_net import SnakeNet
@@ -26,7 +26,7 @@ def apply_parameters_to_model(net, parameters):
    weights = shape_parameters(shapes, parameters)
    net.model.set_weights(weights)
 
-@particlefy 
+# @particlefy 
 def target_function(parameters):
    net = SnakeNet()
    apply_parameters_to_model(net, parameters)
@@ -44,15 +44,13 @@ def target_function(parameters):
          )
       points.append(pts)
       moves.append(mvs)
-   # pool = mp.Pool(processes=3)
-   # args = it.repeat(parameters, tries)
-   # results = pool.map(worker_function, args)
-
-   # points = [r[0] for r in results]
-   # moves = [r[1] for r in results]
    
    avg_points = sum(points) / len(points)
    avg_moves = sum(moves) / len(moves)
+   
+   # trying to remove memory footprint
+   net = None
+
 
    return cost_function(avg_points, avg_moves)
 
@@ -162,35 +160,6 @@ def get_previous_best_pos(net):
 
    return np.array(flattened_weights)
 
-def run_optimisation(net, target_function, iterations=10, particles=15, use_old_pos=True):
-   dimensions = total_parameters(net.get_model_weight_shapes())
-   options = {'c1': 0.5 , 'c2': 0.3, 'w': 0.9}
-   
-
-   if use_old_pos:
-      net.load_weights()
-      old_positions = get_previous_best_pos(net)
-      optimizer = ps.single.GlobalBestPSO(
-         n_particles=particles,
-         dimensions=dimensions,
-         options=options,
-         init_pos=randomize_old_positions(old_positions, particles)
-         )
-   else:
-      optimizer = ps.single.GlobalBestPSO(
-         n_particles=particles,
-         dimensions=dimensions,
-         options=options,
-         init_pos=randomize_positions(dimensions, particles)
-         )
-   try:
-      cost, pos = optimizer.optimize(target_function, iters=iterations, n_processes=3)
-   except KeyboardInterrupt:
-      cost = final_best_cost = optimizer.swarm.best_cost.copy()
-      pos = optimizer.swarm.pbest_pos[optimizer.swarm.pbest_cost.argmin()].copy()
-   
-   return cost, pos
-
 def plot_history(history):
    plt.plot(history)
    plt.title("Cost history")
@@ -201,13 +170,22 @@ def plot_history(history):
 if __name__ == "__main__":
    mp.set_start_method('spawn', force=True)
    net = SnakeNet()
-   cost, pos = run_optimisation(
-      net,
+   dimensions = total_parameters(net.get_model_weight_shapes())
+   
+   best_snake = evolution_optimise(
       target_function,
-      iterations=4,
-      particles=1,
-      use_old_pos=True
+      dimensions,
+      population_size=100,
+      generations=100,
+      should_load_population=False,
+      load_directory='train_1',
+      should_save_population=True,
+      save_directory='train_2',
+      workers=3,
+      allowed_seconds= 60 * 20,
    )
+
+   cost, pos = best_snake.cost, best_snake.gene
 
    print("BEST COST: {}".format(cost))
    apply_parameters_to_model(net, pos)

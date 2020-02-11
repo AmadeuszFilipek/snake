@@ -7,21 +7,22 @@ import os
 import glob
 import json
 import time
+import code
 
 Bounds = namedtuple('Bounds', ['min', 'max'])
 Bin = namedtuple('Bin', ['min', 'max'])
 Individual = namedtuple('Individual', ['gene', 'cost'])
 
+PARENT_RATE = 0.4
 MUTATION_PROBABILITY = 0.2
-PARENT_RATE = 0.5
-MUTATION_DEVIATION = 0.01
+MUTATION_DEVIATION = 0.2
 
 def generate_individual(dimensions, bounds):
    if bounds.max < bounds.min:
       raise ValueError("Invalid bounds: {}".format(bounds))
    span = bounds.max - bounds.min
    random_table = span * np.random.rand(dimensions) + bounds.min
-   return Individual(gene=random_table, cost=0)
+   return Individual(gene=random_table.tolist(), cost=0)
 
 def gene_iterator(population):
    for p in population:
@@ -90,7 +91,7 @@ def crossover(parents, offspring_size):
    
    children = []
    
-   for _ in range(offspring_size / 2):
+   for _ in range(offspring_size // 2):
       father, mother = rng.sample(parents, k=2) 
       
       boy, girl = gamma_weighted_crossover(father, mother)
@@ -101,22 +102,28 @@ def crossover(parents, offspring_size):
 
 def evaluate_fitness(target, population, workers=1):
    
+   updated_population = []
+
    genes = gene_iterator(population)
    if workers > 1:
-      pool = Pool(processes=workers)
-      cost = pool.map(target, genes)
+      with Pool(processes=workers) as pool:
+         cost = pool.map(target, genes)
    else:
       cost = [target(g) for g in genes]
 
    # update cost for each specimen
-   for i in range(len(population)):
-      population[i].cost = cost[i]
+   for i, p in enumerate(population):
+      new_specimen = Individual(gene=p.gene, cost=cost[i])
+      updated_population.append(new_specimen)
+
+   return updated_population
 
 def mutate(population):
 
    for mutant in population:
-      expected_number_of_mutations = len(mutant.gene) * MUTATION_PROBABILITY
-      genome_ids_to_mutate = rng.sample(range(mutant.gene), k=expected_number_of_mutations)
+      gene_length = len(mutant.gene)
+      expected_number_of_mutations = int(gene_length * MUTATION_PROBABILITY)
+      genome_ids_to_mutate = rng.sample(range(gene_length), k=expected_number_of_mutations)
 
       for genome_id in genome_ids_to_mutate:
          mutagen = rng.normalvariate(mu=0, sigma=MUTATION_DEVIATION)
@@ -144,7 +151,7 @@ def load_population(load_directory):
    
    return population
 
-def save_population(directory, population):
+def save_population(population, directory):
    if not os.path.isdir(directory):
       os.makedirs(directory)
 
@@ -159,12 +166,13 @@ def evolution_optimise(
       bounds=Bounds(min=-1, max=1),
       population_size=10,
       generations=10,
-      load_population=False,
+      should_load_population=False,
       load_directory=None,
       workers=1,
-      save_population=True,
       display=True,
       allowed_seconds=None,
+      should_save_population=True,
+      save_directory=None
    ):
 
    if population_size % 2 == 1:
@@ -175,7 +183,7 @@ def evolution_optimise(
    offspring_size = population_size - parent_pool_size
 
    # inicialize population
-   if load_population:
+   if should_load_population:
       population = load_population(load_directory)
    else:
       population = [generate_individual(dimensions, bounds) for _ in range(population_size)]
@@ -186,26 +194,27 @@ def evolution_optimise(
    for gen in range(generations):
 
       # evaluate fitness
-      evaluate_fitness(target, population, workers=workers)
+      population = evaluate_fitness(target, population, workers=workers)
 
       # find the best one
       for p in population:
          if p.cost < best_individual.cost:
-            best_individual = p
+            best_individual = Individual(gene=p.gene, cost=p.cost)
       
       # display the results
       if display:
-         print("Generation {}/{}: best cost: {:.2e}".format(gene, generations, best_individual.cost))
+         print("Generation {}/{}: best cost: {:.2e}".format(gen, generations, best_individual.cost))
 
       # save the population
-      save_population(population, save_directory)
+      if should_save_population:
+         save_population(population, save_directory)
 
       # check timer conditions
       clock = time.time()
-      elapsed_seconds = clock_start - clock
-      if elapsed_seconds > allowed_seconds:
+      elapsed_seconds = clock - clock_start 
+      if (allowed_seconds is not None) and elapsed_seconds > allowed_seconds:
          if display:
-            print("Evolution loop ran out of time. Finishing optimisation. Total runtime:")
+            print("Evolution loop ran out of time. Finishing optimisation. Total runtime: {}".format(elapsed_seconds))
          break
 
       # continue iteration
