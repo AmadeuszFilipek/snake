@@ -124,10 +124,14 @@ def mutate(population):
       gene_length = len(mutant.gene)
       expected_number_of_mutations = int(gene_length * MUTATION_PROBABILITY)
       genome_ids_to_mutate = rng.sample(range(gene_length), k=expected_number_of_mutations)
+      
+      mutated_gene = mutant.gene.copy()
 
       for genome_id in genome_ids_to_mutate:
          mutagen = rng.normalvariate(mu=0, sigma=MUTATION_DEVIATION)
-         mutant.gene[genome_id] += mutagen
+         mutated_gene[genome_id] += mutagen
+
+      mutant.gene = mutated_gene
 
 def reconstruct_specimen(data):
    gene = data[0]

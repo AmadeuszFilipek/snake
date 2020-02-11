@@ -177,10 +177,10 @@ if __name__ == "__main__":
       dimensions,
       population_size=100,
       generations=100,
-      should_load_population=False,
-      load_directory='train_1',
+      should_load_population=True,
+      load_directory='train_3',
       should_save_population=True,
-      save_directory='train_2',
+      save_directory='train_3',
       workers=3,
       allowed_seconds= 60 * 20,
    )
