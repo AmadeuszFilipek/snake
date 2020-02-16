@@ -68,7 +68,7 @@ def worker_function(parameters):
 
 def cost_function(points, moves):
    # minus sign for minimization
-   result = - 1 * points * points * math.exp(points) \
+   result = - 1 * 500 * points * points * math.exp(points) \
             - moves + points * math.sqrt(moves)
    return result
 
@@ -178,11 +178,11 @@ if __name__ == "__main__":
       population_size=100,
       generations=100,
       should_load_population=True,
-      load_directory='train_3',
+      load_directory='train_6',
       should_save_population=True,
-      save_directory='train_3',
-      workers=3,
-      allowed_seconds= 60 * 20,
+      save_directory='train_7',
+      workers=4,
+      allowed_seconds= 60 * 60 * 1,
    )
 
    cost, pos = best_snake.cost, best_snake.gene

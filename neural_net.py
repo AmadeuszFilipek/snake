@@ -49,7 +49,7 @@ def prepare_features(features):
    wrap_batches = np.array([features])
    return wrap_batches
 
-# if __name__ == "__main__":
-#    net = SnakeNet()
-#    net.load_weights()
-#    tfjs.converters.save_keras_model(model, './model')
+if __name__ == "__main__":
+   net = SnakeNet()
+   net.load_weights('...')
+   tfjs.converters.save_keras_model(model, './model')

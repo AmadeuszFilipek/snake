@@ -495,6 +495,7 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
 
 if __name__ == "__main__":
    net = SnakeNet()
+   net.load_weights('./model/best_weights')
    score, moves, avg_moves_to_get_apple = play(
    display=True, 
    step_time=0.05, 

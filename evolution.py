@@ -15,7 +15,7 @@ Individual = namedtuple('Individual', ['gene', 'cost'])
 
 PARENT_RATE = 0.4
 MUTATION_PROBABILITY = 0.2
-MUTATION_DEVIATION = 0.2
+MUTATION_DEVIATION = 0.4
 
 def generate_individual(dimensions, bounds):
    if bounds.max < bounds.min:
@@ -127,9 +127,7 @@ def mutate(population):
       
       for genome_id in genome_ids_to_mutate:
          mutagen = rng.normalvariate(mu=0, sigma=MUTATION_DEVIATION)
-         mutated_gene[genome_id] += mutagen
-      
-      
+         mutant.gene[genome_id] += mutagen   
 
 def reconstruct_specimen(data):
    gene = data[0]
