@@ -12,9 +12,9 @@ class SnakeNet:
    def __init__(self):
       # elu, tanh, softplus
       self.model = models.Sequential()
-      self.model.add(layers.Dense(28, activation='relu',input_shape=(28,)))
-      self.model.add(layers.Dense(16, activation='relu'))
-      self.model.add(layers.Dense(8, activation='relu'))
+      self.model.add(layers.Dense(32, activation='relu',input_shape=(32,)))
+      self.model.add(layers.Dense(20, activation='relu'))
+      self.model.add(layers.Dense(12, activation='relu'))
       self.model.add(layers.Dense(4, activation='softmax'))
 
    def summary(self):

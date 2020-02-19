@@ -92,6 +92,21 @@ def get_snake_to_tail_distance(head, tail, orientation, grid_size):
    
    return distance
 
+def get_point_to_point_distance(point1, point2, orientation, grid_size):
+   distance = np.inf
+   
+   vector_point = ORIENTATION_TO_POINT[orientation]
+
+   for i in range(1, grid_size):
+      point = Point(point1.x + i * vector_point.x, point1.y + i * vector_point.y)
+      if point.x >= grid_size or point.y >= grid_size:
+         break
+      if point == point2:
+         distance = i
+         break
+   
+   return distance
+
 def get_snake_to_tail_distances(snake, grid_size):
    tail = snake.copy()
    head = tail.pop()
@@ -103,32 +118,15 @@ def get_snake_to_tail_distances(snake, grid_size):
 
    return distances
 
-   # for plus_x in range(1, min_positive_dx):
-   #    point = Point(head.x + plus_x + 1, head.y)
-   #    if point in snake_copy:
-   #       min_positive_dx = plus_x
-   #       break
-   # for minus_x in range(0, min_negative_dx):
-   #    point = Point(head.x - minus_x - 1, head.y)
-   #    if point in snake_copy:
-   #       min_negative_dx = minus_x
-   #       break
-   # for plus_y in range(0, min_positive_dy):
-   #    point = Point(head.x, head.y + plus_y + 1)
-   #    if point in snake_copy:
-   #       min_positive_dy = plus_y
-   #       break
-   # for minus_y in range(0, min_negative_dy):
-   #    point = Point(head.x, head.y - minus_y - 1)
-   #    if point in snake_copy:
-   #       min_negative_dy = minus_y
-   #       break
+def get_snake_to_apple_distances(snake, apple, grid_size):
+   head = snake[-1]
 
-   # result = [
-   #    min_negative_dy, min_negative_dx,
-   #    min_positive_dy, min_positive_dx
-   # ]
-   # return result
+   distances = []
+   for orientation in WORLD_ROSE:
+      dist = get_point_to_point_distance(head, apple, orientation, grid_size)
+      distances.append(dist)
+
+   return distances 
 
 def get_point_to_point_orientation(center, other):
    '''Return the orientation of other from the center'''
@@ -216,11 +214,9 @@ def construct_feature_array(time_left, direction, snake, apple, grid_size):
    
    features += get_snake_to_tail_distances(snake, grid_size)
 
+   features += get_snake_to_apple_distances(snake, apple, grid_size)
+
    features = normalize(features)
-
-
-   apple_orientation = get_apple_to_snake_orientation(snake, apple)
-   features += hot_encode_orientation(apple_orientation)
    
    tail_direction = get_tail_direction(snake)
    features += hot_encode_direction(tail_direction)
