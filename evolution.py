@@ -15,7 +15,7 @@ Individual = namedtuple('Individual', ['gene', 'cost'])
 
 PARENT_RATE = 0.4
 MUTATION_PROBABILITY = 0.2
-MUTATION_DEVIATION = 0.4
+MUTATION_DEVIATION = 0.1
 
 def generate_individual(dimensions, bounds):
    if bounds.max < bounds.min:
@@ -73,7 +73,7 @@ def gamma_weighted_crossover(father, mother):
 
    for f_genome, m_genome in zip(father.gene, mother.gene):
 
-      gamma = rng.random()
+      gamma = rng.random() ** (1 / 10.)
       boy_genome  = 0.5 * ((1 + gamma) * f_genome + (1 - gamma) * m_genome)
       girl_genome = 0.5 * ((1 - gamma) * f_genome + (1 + gamma) * m_genome)
 
