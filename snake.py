@@ -2,9 +2,10 @@ import random as rnd
 import itertools as it
 from collections import deque, namedtuple
 from time import sleep
-import os
+import os, os.path
 from math import sqrt
 import numpy as np
+import json
 # import code
 
 from pynput.keyboard import Key, Listener
@@ -41,29 +42,6 @@ def get_snake_to_apple_distance(snake, apple):
    y_distance = abs(head.y - apple.y)
 
    return [x_distance, y_distance]
-
-def get_snake_to_apple_distances(snake, apple, grid_size):
-   ''' unused '''
-   head = snake[-1]
-   if head.x < apple.x:
-      positive_distance_x = apple.x - head.x
-      negative_distance_x = grid_size - positive_distance_x
-   else:
-      negative_distance_x = head.x - apple.x
-      positive_distance_x = grid_size - negative_distance_x
-   
-   if head.y < apple.y:
-      positive_distance_y = apple.y - head.y
-      negative_distance_y = grid_size - positive_distance_x
-   else:
-      negative_distance_y = head.y - apple.y
-      positive_distance_y = grid_size - negative_distance_y
-   
-   result = [
-      positive_distance_x, negative_distance_x, 
-      positive_distance_y, negative_distance_y
-   ]
-   return result
 
 def get_snake_tail_vision(snake):
    tail = snake.copy()
@@ -107,7 +85,7 @@ def get_point_to_point_distance(point1, point2, orientation, grid_size):
    
    return distance
 
-def get_snake_to_tail_distances(snake, grid_size):
+def get_snake_to_tail_distances(snake, grid_size, binary=False):
    tail = snake.copy()
    head = tail.pop()
 
@@ -116,17 +94,30 @@ def get_snake_to_tail_distances(snake, grid_size):
       dist = get_snake_to_tail_distance(head, tail, orientation, grid_size)
       distances.append(dist)
 
+   if binary:
+      distances = list(map(lambda d: 1 if d == 1 else 0, distances))
+
    return distances
 
-def get_snake_to_apple_distances(snake, apple, grid_size):
+def get_snake_to_apple_distances(snake, apple, grid_size, binary=True):
    head = snake[-1]
 
-   distances = []
-   for orientation in WORLD_ROSE:
+   if binary:
+      distances = [0] * 8
+   else:
+      distances = [np.inf] * 8
+   
+   for i, orientation in enumerate(WORLD_ROSE):
       dist = get_point_to_point_distance(head, apple, orientation, grid_size)
-      distances.append(dist)
+      if np.isinf(dist):
+         continue
+      else:
+         if binary:
+            dist = 1
+         distances[i] = dist
+         break
 
-   return distances 
+   return distances
 
 def get_point_to_point_orientation(center, other):
    '''Return the orientation of other from the center'''
@@ -156,7 +147,8 @@ def get_apple_to_snake_orientation(snake, apple):
    orientation = get_point_to_point_orientation(snake_head, apple)
    return orientation
 
-def hot_encode_possible_moves(snake_to_tail_distances):
+# TODO :!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def get_possible_moves(snake_to_tail_distances):
    hot_encoded_possibilities = [1, 1, 1, 1]
    for i, distance in enumerate(snake_to_tail_distances):
       if distance == 0:
@@ -164,14 +156,18 @@ def hot_encode_possible_moves(snake_to_tail_distances):
    
    return hot_encoded_possibilities
 
-def get_snake_to_wall_distance(snake, grid_size):
+def get_snake_to_wall_distance(snake, grid_size, binary=False):
    head = snake[-1]
    distance_to_left = head.y + 1
    distance_to_up = head.x + 1
    distance_to_right = grid_size - head.y
    distance_to_down = grid_size - head.x
-   result = [distance_to_left, distance_to_up, distance_to_right, distance_to_down] 
-   return result
+   label = [distance_to_left, distance_to_up, distance_to_right, distance_to_down]
+
+   if binary:
+      label = list(map(lambda d: 1 if d == 1 else 0, label))
+
+   return label
 
 def get_obstacle_vision(snake, grid_size):
    ''' binary vision, 1 if path is clear, -1 if obstacle '''
@@ -207,16 +203,15 @@ def normalize(features):
    feature_array = [1 / f for f in features]
    return feature_array
 
-def construct_feature_array(time_left, direction, snake, apple, grid_size):
+def construct_feature_array(direction, snake, apple, grid_size):
    features = []
 
-   features += get_snake_to_wall_distance(snake, grid_size)
+   # features = normalize(features)
+   features += get_snake_to_wall_distance(snake, grid_size, binary=True)
    
-   features += get_snake_to_tail_distances(snake, grid_size)
+   features += get_snake_to_tail_distances(snake, grid_size, binary=True)
 
-   features += get_snake_to_apple_distances(snake, apple, grid_size)
-
-   features = normalize(features)
+   features += get_snake_to_apple_distances(snake, apple, grid_size, binary=True)
    
    tail_direction = get_tail_direction(snake)
    features += hot_encode_direction(tail_direction)
@@ -225,16 +220,15 @@ def construct_feature_array(time_left, direction, snake, apple, grid_size):
 
    return features
 
-def net_predict_next_move(time_left, direction, snake, apple, grid):
+def net_predict_next_move(direction, snake, apple, grid):
    ''' not used anymore '''
    raise NotImplementedError()
-   features = construct_feature_array(time_left, direction, snake, apple, grid)
+   features = construct_feature_array(direction, snake, apple, grid)
    distribution = net.predict_next_move(features)
    move = distribution_to_move(distribution)
    return move
 
-def net_predict_next_direction(net, time_left, direction, snake, apple, grid_size):
-   features = construct_feature_array(time_left, direction, snake, apple, grid_size)
+def net_predict_next_direction(net, features):
    distribution = net.predict_next_move(features)
    direction = distribution_to_direction(distribution)
    return direction
@@ -265,8 +259,8 @@ def move_to_direction(previous_direction, move):
    elif direction_id > 3:
       direction_id = 0
 
-   result = DIRECTIONS[direction_id]
-   return result
+   label = DIRECTIONS[direction_id]
+   return label
 
 def check_tail_collision(snake):
    collision = False
@@ -438,7 +432,35 @@ def move_point(point, direction):
    
    raise ValueError("move_point: Invalid direction {}".format(direction))
 
-def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=SnakeNet()):
+def save_sample(sample, directory='moves_dataset'):
+   if not os.path.isdir(directory):
+      os.makedirs(directory)
+
+   label = sample['label']
+
+   count = len(os.listdir(directory))
+   name = "{}_{}.json".format(label, count)
+
+   with open(directory + '/' + name, 'w') as file:
+      json.dump(sample, file)
+
+def build_sample(features, direction, label):
+   flip = {0: 1, 1: 0}
+   hot_encoded_directions = hot_encode_direction(direction)
+   if label == 'apple':
+      expected = hot_encoded_directions
+   elif label in ['starve', 'collision']:
+      expected = [flip[d] for d in hot_encoded_directions]
+
+   sample = {
+      'features': features,
+      'expected_result': expected,
+      'label': label
+   }
+
+   return sample
+
+def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=SnakeNet(), register_moves=False):
    grid_size = 10
    grid = initialize_grid(grid_size=grid_size)
    snake, direction = generate_snake(4, grid_size) 
@@ -449,19 +471,22 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
    moves = 0
    moves_without_apple = 1
    moves_to_get_apple = []
+   bad_move = None
 
    # main game loop
    try:
       while not game_is_lost:
-         if display: 
+         if display:
             update_grid(snake, grid, apple)
             print_grid(grid)
-            
-         new_direction = net_predict_next_direction(net, moves_without_apple, direction, snake, apple, grid_size)
+         
+         features = construct_feature_array(direction, snake, apple, grid_size)
+         new_direction = net_predict_next_direction(net, features)
          direction = validate_direction(direction, new_direction)
          does_get_apple = advance(snake, direction, apple)
-
+         
          if does_get_apple:
+            if register_moves: save_sample(build_sample(features, direction, label='apple'))
             points += 1
             moves_to_get_apple.append(moves_without_apple)
             moves_without_apple = 0
@@ -469,6 +494,9 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
 
          if collision:
             game_is_lost = check_collision(snake, grid_size)
+            bad_move = build_sample(features, direction, label='collision')
+            if register_moves and game_is_lost:
+               save_move(bad_move)
 
          sleep(step_time)
          moves += 1
@@ -476,7 +504,9 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
 
          if moves_without_apple > moves_to_lose:
             game_is_lost = True
-         
+            bad_move = build_sample(features, direction, label='starve')
+            if register_moves:
+               save_move(bad_move)
 
    except KeyboardInterrupt:
       pass
@@ -486,21 +516,24 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
    else:
       avg_moves_to_get_apple = 10000
 
-   return points, moves, avg_moves_to_get_apple
+   return points, moves, avg_moves_to_get_apple, bad_move
 
 
 if __name__ == "__main__":
    net = SnakeNet()
+   # net.load_weights('./model/best_weights')
    net.load_weights('./model/best_weights')
-   score, moves, avg_moves_to_get_apple = play(
+   score, moves, avg_moves_to_get_apple, bad_move = play(
    display=True, 
    step_time=0.05, 
-   moves_to_lose=1000, 
+   moves_to_lose=50,
    collision=True,
-   net=net
+   net=net,
+   register_moves=False
    )
 
    print(score, moves, avg_moves_to_get_apple)
 
+# TODO: MAKE BETTER SAMPLES WITH NARROWED OPTIONS as expected
 
 

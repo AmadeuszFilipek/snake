@@ -13,16 +13,50 @@ Bounds = namedtuple('Bounds', ['min', 'max'])
 Bin = namedtuple('Bin', ['min', 'max'])
 Individual = namedtuple('Individual', ['gene', 'cost'])
 
-PARENT_RATE = 0.4
+PARENT_RATE = 0.3
 MUTATION_PROBABILITY = 0.2
 MUTATION_DEVIATION = 0.1
+BINARY_RESOLUTION = 5
 
-def generate_individual(dimensions, bounds):
+FLIP_BIT = {'0': '1', '1': '0'}
+
+def value_to_binary(genome, bounds):
+   binary_integer = 0
+   for i in range(BINARY_RESOLUTION - 1, 0 - 1, -1):
+      value = 2 ** i
+      number_to_check = integer_to_value(binary_integer + value, bounds)
+      if number_to_check < genome:
+         binary_integer += value
+      
+   binary_string = bin(binary_integer)
+   binary_string = binary_string[2:].zfill(BINARY_RESOLUTION)
+   return binary_string
+
+def integer_to_value(binary_integer, bounds):
+   span = bounds.max - bounds.min
+   value = bounds.min + binary_integer * span / (2 ** BINARY_RESOLUTION - 1)
+   return value
+
+def binary_to_value(binary_genome, bounds):
+   binary_integer = int(binary_genome, 2)
+   value = integer_to_value(binary_integer, bounds)
+
+   return value
+
+def generate_individual(dimensions, bounds, binary=True):
    if bounds.max < bounds.min:
       raise ValueError("Invalid bounds: {}".format(bounds))
-   span = bounds.max - bounds.min
-   random_table = span * np.random.rand(dimensions) + bounds.min
-   return Individual(gene=random_table.tolist(), cost=0)
+   
+   if binary:
+      random_table = np.random.rand(dimensions) * (2 ** BINARY_RESOLUTION - 1)
+      random_table = np.around(random_table)
+      random_table = list(map(lambda x: integer_to_value(x, bounds), random_table))
+   else:
+      span = bounds.max - bounds.min
+      random_table = span * np.random.rand(dimensions) + bounds.min
+      random_table = random_table.tolist()
+
+   return Individual(gene=random_table, cost=0)
 
 def gene_iterator(population):
    for p in population:
@@ -53,16 +87,20 @@ def number_in_bin(n, b):
    return (n > b.min) and (n < b.max)
 
 def select_mating_pool(population, parents_pool_size):
-   ''' implementation allows same parent multiple times '''
    parents = []
-   bins = construct_bins(population)
+   candidates = population.copy()
 
    for _ in range(parents_pool_size):
+      bins = construct_bins(candidates)
+
       random = rng.random()
-      for b, individual in zip(bins, population):
-         if number_in_bin(random, b): 
-            parents.append(individual)
+      for i in range(len(candidates)):
+         if number_in_bin(random, bins[i]):
+            selected_individual_id = i
             break
+
+      parents.append(candidates[selected_individual_id])
+      candidates.pop(selected_individual_id)
       
    return parents
 
@@ -70,10 +108,16 @@ def gamma_weighted_crossover(father, mother):
    ''' gamma parameter is randomly generated (0, 1) for each genome '''
    boy_gene = []
    girl_gene = []
+   tau = 5
 
    for f_genome, m_genome in zip(father.gene, mother.gene):
 
-      gamma = rng.random() ** (1 / 10.)
+      gamma = rng.random()
+      if gamma > 0.5:
+         gamma = gamma ** (1 / tau)
+      else:
+         gamma = gamma ** tau
+
       boy_genome  = 0.5 * ((1 + gamma) * f_genome + (1 - gamma) * m_genome)
       girl_genome = 0.5 * ((1 - gamma) * f_genome + (1 + gamma) * m_genome)
 
@@ -85,7 +129,32 @@ def gamma_weighted_crossover(father, mother):
 
    return boy, girl
 
-def crossover(parents, offspring_size):
+def single_point_binary_crossover(father, mother, bounds):
+   boy_gene = []
+   girl_gene = []
+
+   for f_genome, m_genome in zip(father.gene, mother.gene):
+
+      binary_father_genome = value_to_binary(f_genome, bounds)
+      binary_mother_genome = value_to_binary(m_genome, bounds)
+
+      point = int(rng.random() * BINARY_RESOLUTION)
+
+      binary_boy_genome  = binary_father_genome[point:] + binary_mother_genome[:point]
+      binary_girl_genome = binary_father_genome[:point] + binary_mother_genome[point:]
+      
+      boy_genome = binary_to_value(binary_boy_genome, bounds)
+      girl_genome = binary_to_value(binary_girl_genome, bounds)
+
+      boy_gene.append(boy_genome)
+      girl_gene.append(girl_genome)
+   
+   boy = Individual(gene=boy_gene, cost=0)
+   girl = Individual(gene=girl_gene, cost=0)
+
+   return boy, girl
+
+def crossover(parents, offspring_size, bounds, binary=True):
    if offspring_size % 2 == 1:
       raise ValueError("Requested offspring size not even.")
    
@@ -94,7 +163,11 @@ def crossover(parents, offspring_size):
    for _ in range(offspring_size // 2):
       father, mother = rng.sample(parents, k=2) 
       
-      boy, girl = gamma_weighted_crossover(father, mother)
+      if binary:
+         boy, girl = single_point_binary_crossover(father, mother, bounds)
+      else:
+         boy, girl = gamma_weighted_crossover(father, mother)
+
       children.append(boy)
       children.append(girl)
 
@@ -107,13 +180,13 @@ def evaluate_fitness(target, population, workers=1):
    genes = gene_iterator(population)
    if workers > 1:
       with Pool(processes=workers) as pool:
-         cost = pool.map(target, genes)
+         results = pool.map(target, genes)
    else:
-      cost = [target(g) for g in genes]
+      results = [target(g) for g in genes]
 
-   # update cost for each specimen
-   for i, p in enumerate(population):
-      new_specimen = Individual(gene=p.gene, cost=cost[i])
+   # build new specimens with their cost and changed genes
+   for cost, parameters in results:
+      new_specimen = Individual(gene=parameters, cost=cost)
       updated_population.append(new_specimen)
 
    return updated_population
@@ -122,13 +195,32 @@ def mutate(population):
 
    for mutant in population:
       gene_length = len(mutant.gene)
-      expected_number_of_mutations = int(gene_length * MUTATION_PROBABILITY)
-      genome_ids_to_mutate = rng.sample(range(gene_length), k=expected_number_of_mutations)
       
-      for genome_id in genome_ids_to_mutate:
-         mutagen = rng.normalvariate(mu=0, sigma=MUTATION_DEVIATION)
-         mutant.gene[genome_id] += mutagen   
+      for genome_id in range(gene_length):
+         is_mutated = rng.random() < MUTATION_PROBABILITY
+         if (is_mutated):
+            mutagen = rng.normalvariate(mu=0, sigma=MUTATION_DEVIATION)
+            mutant.gene[genome_id] += mutagen
 
+def binary_mutate(population, bounds):
+
+   for mutant in population:
+      gene_length = len(mutant.gene)
+
+      for genome_id in range(gene_length):
+         is_mutated = rng.random() < MUTATION_PROBABILITY
+         if (is_mutated):
+            genome = mutant.gene[genome_id]
+            binary_genome = list(value_to_binary(genome, bounds))
+
+            bit_to_mutate = int(rng.random() * BINARY_RESOLUTION)
+            old_bit = binary_genome[bit_to_mutate]
+            new_bit = FLIP_BIT[old_bit]
+            binary_genome[bit_to_mutate] = new_bit
+            new_genome = binary_to_value(''.join(binary_genome), bounds)
+
+            mutant.gene[genome_id] = new_genome
+         
 def reconstruct_specimen(data):
    gene = data[0]
    cost = data[1]
@@ -172,7 +264,8 @@ def evolution_optimise(
       display=True,
       allowed_seconds=None,
       should_save_population=True,
-      save_directory=None
+      save_directory=None,
+      binary=False,
    ):
 
    if population_size % 2 == 1:
@@ -186,15 +279,18 @@ def evolution_optimise(
    if should_load_population:
       population = load_population(load_directory)
    else:
-      population = [generate_individual(dimensions, bounds) for _ in range(population_size)]
+      population = [generate_individual(dimensions, bounds, binary) for _ in range(population_size)]
 
    best_individual = population[0]
+   children = population
+   parents = []
 
    # main generation loop
    for gen in range(generations):
 
       # evaluate fitness
-      population = evaluate_fitness(target, population, workers=workers)
+      children = evaluate_fitness(target, children, workers=workers)
+      population = children + parents
 
       # find the best one
       for p in population:
@@ -219,11 +315,14 @@ def evolution_optimise(
          break
 
       # continue iteration
-      parents = select_mating_pool(population, parent_pool_size)
+      parents = select_mating_pool(population, parent_pool_size - 1)
+      parents.append(best_individual)
 
-      children = crossover(parents, offspring_size)
+      children = crossover(parents, offspring_size, bounds, binary)
+      
+      binary_mutate(children, bounds) if binary else mutate(children)
+
       population = parents + children
-      mutate(population)
 
    return best_individual
 
