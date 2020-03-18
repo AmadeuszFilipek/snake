@@ -147,8 +147,8 @@ def get_apple_to_snake_orientation(snake, apple):
    orientation = get_point_to_point_orientation(snake_head, apple)
    return orientation
 
-# TODO :!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 def get_possible_moves(snake_to_tail_distances):
+   raise DeprecationWarning()
    hot_encoded_possibilities = [1, 1, 1, 1]
    for i, distance in enumerate(snake_to_tail_distances):
       if distance == 0:
@@ -205,6 +205,9 @@ def normalize(features):
 
 def construct_feature_array(direction, snake, apple, grid_size):
    features = []
+
+   # BINARY YES/NO VISION FOR APPLE/SELF IS BETTER
+   # THAN DISTANCE VISION
 
    # features = normalize(features)
    features += get_snake_to_wall_distance(snake, grid_size, binary=True)
@@ -447,11 +450,24 @@ def save_sample(sample, directory='moves_dataset'):
 def build_sample(features, direction, label):
    flip = {0: 1, 1: 0}
    hot_encoded_directions = hot_encode_direction(direction)
+
    if label == 'apple':
       expected = hot_encoded_directions
-   elif label in ['starve', 'collision']:
+   elif label == 'starve':
       expected = [flip[d] for d in hot_encoded_directions]
+      possibles = possible_moves(features)
+      # remove the impossible moves from the options
+      for i in range(4):
+         if possibles[i] == 0:
+            expected[i] = 0
+   elif label == 'collision':
+      expected = possible_moves(features)
+   else:
+      return None
 
+   if all([i == 0 for i in expected]):
+      return None
+   
    sample = {
       'features': features,
       'expected_result': expected,
@@ -459,6 +475,23 @@ def build_sample(features, direction, label):
    }
 
    return sample
+
+def possible_moves(features):
+   wall_vision = features[:8]
+   tail_vision = features[8:16]
+   possible_moves_dict = {'up': 1, 'right': 1, 'down': 1, 'left': 1}
+   id_to_direction = {0: 'up', 2: 'right', 4: 'down', 6:'left'}
+   
+   for i in range(0, 8, 2):
+      if wall_vision[i] == 1 or tail_vision[i] == 1:
+         direction = id_to_direction[i]
+         possible_moves_dict[direction] = 0
+   
+   possible_moves = []
+   for direction in DIRECTIONS:
+      possible_moves.append(possible_moves_dict[direction])
+   
+   return possible_moves
 
 def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=SnakeNet(), register_moves=False):
    grid_size = 10

@@ -46,12 +46,11 @@ def target_function(parameters):
       if sample:
          net.train_on_single_sample(sample)
    
-   avg_points = sum(points) / len(points)
-   avg_moves = sum(moves) / len(moves)
+   # avg_points = sum(points) / len(points)
+   # avg_moves = sum(moves) / len(moves)
    
+   cost = cost_function(pts, mvs)
    new_parameters = get_flat_weights(net)
-   cost = cost_function(avg_points, avg_moves)
-   # trying to remove memory footprint
    net = None
 
    return cost, new_parameters
@@ -113,14 +112,14 @@ if __name__ == "__main__":
    best_snake = evolution_optimise(
       target_function,
       dimensions,
-      population_size=500,
-      generations=5,
+      population_size=100,
+      generations=1000,
       should_load_population=True,
-      load_directory='train_new_1',
+      load_directory='train_new_3',
       should_save_population=True,
-      save_directory='train_new_2',
+      save_directory='train_new_3',
       workers=4,
-      allowed_seconds= 60 * 60 * 1,
+      allowed_seconds= 60 * 60 * 8,
    )
 
    cost, pos = best_snake.cost, best_snake.gene
