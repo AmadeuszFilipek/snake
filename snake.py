@@ -95,7 +95,8 @@ def get_snake_to_tail_distances(snake, grid_size, binary=False):
       distances.append(dist)
 
    if binary:
-      distances = list(map(lambda d: 1 if d == 1 else 0, distances))
+      # any distance other than infinity -> vision: YES
+      distances = list(map(lambda d: 0 if np.isinf(d) else 1, distances))
 
    return distances
 
@@ -206,11 +207,13 @@ def normalize(features):
 def construct_feature_array(direction, snake, apple, grid_size):
    features = []
 
+   # TODO: ASSERT THAT it is so
    # BINARY YES/NO VISION FOR APPLE/SELF IS BETTER
    # THAN DISTANCE VISION
+   # wall shall remain a distance function
 
-   # features = normalize(features)
-   features += get_snake_to_wall_distance(snake, grid_size, binary=True)
+   features += get_snake_to_wall_distance(snake, grid_size, binary=False)
+   features = normalize(features)
    
    features += get_snake_to_tail_distances(snake, grid_size, binary=True)
 
