@@ -2,3 +2,5 @@
 /train_new/*
 /train_new_1/*
 /__pycache__/*
+__pycache__/*
+*.pyc

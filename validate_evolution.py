@@ -1,4 +1,6 @@
 import evolution as evo
+import crossover_operators as xso
+import mutation_operators as mo
 import math
 
 def rastrigin_function(arguments):
@@ -10,29 +12,28 @@ def rastrigin_function(arguments):
 
 if __name__ == "__main__":
 
-   shuffle_crossover_operator = evo.shuffle_crossover(0.5)
-   gamma_crossover_operator = evo.gamma_weighted_crossover(tau=10)
+   crossover_operators = [
+      xso.shuffle_crossover(mixing_rate=0.1),
+      xso.average_crossover(ratio=0.2)
+   ]
 
-   gamma = evo.evolution_optimise(
+   mutation_operators = [
+      mo.gauss_mutate(mu=0, sigma=0.05),
+      mo.univariate_mutate(mu=0, sigma=0.05),
+      mo.null_mutate()
+   ]
+ 
+   results = evo.evolution_optimise(
        target=rastrigin_function,
-       crossover_operator=shuffle_crossover_operator,
+       crossover_operators=crossover_operators,
+       mutation_operators=mutation_operators,
        dimensions=100,
        population_size=100,
        generations=100,
        workers=1
    )
 
-   shuffle = evo.evolution_optimise(
-       target=rastrigin_function,
-       crossover_operator=shuffle_crossover_operator,
-       dimensions=100,
-       population_size=100,
-       generations=100,
-       workers=1
-   )
-
-   print('gamma: ', gamma.cost)
-   print('shuffle: ', shuffle.cost)
+   print('results: ', results.cost)
 
    # first observations: parent rate plays huge difference
    # those two operators does not make much of a difference... just becouse this target function

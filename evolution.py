@@ -13,9 +13,10 @@ Bounds = namedtuple('Bounds', ['min', 'max'])
 Bin = namedtuple('Bin', ['min', 'max'])
 Individual = namedtuple('Individual', ['gene', 'cost'])
 
-PARENT_RATE = 0.01
-MUTATION_PROBABILITY = 0.1
-MUTATION_DEVIATION = 0.1
+PARENT_RATE = 0.05
+# zazwyczaj rzędu 1%. Jest ono niskie, ponieważ zbyt silna mutacja przynosi 
+# efekt odwrotny do zamierzonego: zamiast subtelnie różnicować dobre rozwiązania - niszczy je.
+# Stąd w procesie ewolucji mutacja ma znaczenie drugorzędne, szczególnie w przypadku długich chromosomów. 
 BINARY_RESOLUTION = 5
 
 FLIP_BIT = {'0': '1', '1': '0'}
@@ -104,70 +105,10 @@ def select_mating_pool(population, parents_pool_size):
       
    return parents
 
-def gamma_weighted_crossover(tau=10):
-   ''' gamma parameter is randomly generated (0, 1) for each genome '''
-
-   # after many thoughts and not much validation really ... why btw ? i came to a conclussion that
-   # this operator is retarded as FUCK
-   # lets do some serious tests maybe ?
-   # yeah...
-   def lambda_gamma_weighted_crossover(father, mother):
-      boy_gene = []
-      girl_gene = []
-
-      for f_genome, m_genome in zip(father.gene, mother.gene):
-
-         gamma = rng.random()
-         if gamma > 0.5:
-            gamma = gamma ** (1 / tau)
-         else:
-            gamma = gamma ** tau
-
-         boy_genome  = 0.5 * ((1 + gamma) * f_genome + (1 - gamma) * m_genome)
-         girl_genome = 0.5 * ((1 - gamma) * f_genome + (1 + gamma) * m_genome)
-
-         boy_gene.append(boy_genome)
-         girl_gene.append(girl_genome)
-      
-      boy = Individual(gene=boy_gene, cost=0)
-      girl = Individual(gene=girl_gene, cost=0)
-
-      return boy, girl
-
-   return lambda_gamma_weighted_crossover
-
-def shuffle_crossover(mixing_rate=0.5):
-   ''' each child gets some father and some mother genes '''
-   if mixing_rate < 0 or mixing_rate > 1:
-      raise ValueError()
-   
-   def lambda_shuffle_crossover(father, mother):
-
-      boy_gene = []
-      girl_gene = []
-
-      for f_genome, m_genome in zip(father.gene, mother.gene):
-
-         gamma = rng.random()
-         if gamma > mixing_rate:
-            boy_genome  = f_genome
-            girl_genome = m_genome
-         else:
-            boy_genome  = m_genome
-            girl_genome = f_genome
-
-         boy_gene.append(boy_genome)
-         girl_gene.append(girl_genome)
-      
-      boy = Individual(gene=boy_gene, cost=0)
-      girl = Individual(gene=girl_gene, cost=0)
-
-      return boy, girl
-   
-   return lambda_shuffle_crossover
-
 def single_point_binary_crossover(father, mother, bounds):
    ''' deprecated and unused '''
+   raise DeprecationWarning
+
    boy_gene = []
    girl_gene = []
 
@@ -192,7 +133,7 @@ def single_point_binary_crossover(father, mother, bounds):
 
    return boy, girl
 
-def crossover(parents, offspring_size, crossover_operator, binary=True):
+def crossover(parents, offspring_size, crossover_operators, binary=True):
    if offspring_size % 2 == 1:
       raise ValueError("Requested offspring size not even.")
    
@@ -201,6 +142,7 @@ def crossover(parents, offspring_size, crossover_operator, binary=True):
    for _ in range(offspring_size // 2):
       father, mother = rng.sample(parents, k=2) 
       
+      crossover_operator = rng.choice(crossover_operators)
       boy, girl = crossover_operator(father, mother)
 
       children.append(boy)
@@ -226,16 +168,16 @@ def evaluate_fitness(target, population, workers=1):
 
    return updated_population
 
-def mutate(population):
+def mutate(population, mutation_operators):
+   mutated_population = []
 
-   for mutant in population:
-      gene_length = len(mutant.gene)
-      
-      for genome_id in range(gene_length):
-         is_mutated = rng.random() < MUTATION_PROBABILITY
-         if (is_mutated):
-            mutagen = rng.normalvariate(mu=0, sigma=MUTATION_DEVIATION)
-            mutant.gene[genome_id] += mutagen
+   for specimen in population:
+      mutation_operator = rng.choice(mutation_operators)
+      mutant = mutation_operator(specimen)
+
+      mutated_population.append(mutant)
+   
+   return mutated_population
 
 def binary_mutate(population, bounds):
 
@@ -293,8 +235,8 @@ def save_population(population, directory):
 def evolution_optimise(
       target,
       dimensions,
-      crossover_operator,
-      mutation_operator=mutate,
+      crossover_operators,
+      mutation_operators,
       bounds=Bounds(min=-1, max=1),
       population_size=10,
       generations=10,
@@ -357,9 +299,9 @@ def evolution_optimise(
       parents = select_mating_pool(population, parent_pool_size - 1)
       parents.append(best_individual)
 
-      children = crossover(parents, offspring_size, crossover_operator)
+      children = crossover(parents, offspring_size, crossover_operators)
       
-      mutation_operator(children)
+      children = mutate(children, mutation_operators)
 
    return best_individual
 
