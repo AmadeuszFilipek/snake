@@ -6,7 +6,9 @@ import math
 from functools import reduce, wraps
 import multiprocessing as mp
 
-from evolution import evolution_optimise, Bounds, shuffle_crossover
+from evolution import evolution_optimise, Bounds
+import crossover_operators as xso
+import mutation_operators as mo
 
 from snake import play
 from neural_net import SnakeNet
@@ -109,16 +111,32 @@ if __name__ == "__main__":
    mp.set_start_method('spawn', force=True)
    net = SnakeNet()
    dimensions = total_parameters(net.get_model_weight_shapes())
+
+   crossover_operators = [
+      xso.shuffle_crossover(mixing_rate=0.1),
+      xso.shuffle_crossover(mixing_rate=0.5),
+      xso.average_crossover(ratio=0.5),
+      xso.average_crossover(ratio=0.1),
+   ]
+
+   mutation_operators = [
+      mo.gauss_mutate(mu=0, sigma=0.05),
+      mo.univariate_mutate(mu=0, sigma=0.1),
+      mo.spike_mutate(bounds=Bounds(min=-10, max=10)),
+      mo.negate_mutate(),
+      mo.null_mutate()
+   ]
    
    best_snake = evolution_optimise(
       target_function,
       dimensions,
-      crossover_operator=shuffle_crossover(mixing_rate=0.5),
+      crossover_operators=crossover_operators,
+      mutation_operators=mutation_operators,
       population_size=500,
-      generations=1000,
+      generations=3,
       should_load_population=True,
       load_directory='train_32_inputs_investigation',
-      should_save_population=True,
+      should_save_population=False,
       save_directory='train_32_inputs_investigation',
       workers=4,
       allowed_seconds= 60 * 60 * 8

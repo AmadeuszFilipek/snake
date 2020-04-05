@@ -5,6 +5,7 @@ import random as rng
 Individual = namedtuple('Individual', ['gene', 'cost'])
 Bounds = namedtuple('Bounds', ['min', 'max'])
 
+# shall be low so that there is movement but not much disturbance
 MUTATION_PROBABILITY = 0.05
 
 def gauss_mutate(mu=0, sigma=1):
@@ -30,7 +31,6 @@ def negate_mutate():
          mutated_genome = genome
          is_mutated = rng.random() < MUTATION_PROBABILITY
          if (is_mutated):
-            mutagen = rng.normalvariate(mu=mu, sigma=sigma)
             mutated_genome *= -1
          mutated_gene.append(mutated_genome)
 
@@ -46,7 +46,6 @@ def univariate_mutate(mu=0, sigma=1):
          is_mutated = rng.random() < MUTATION_PROBABILITY
          if (is_mutated):
             mutagen = sigma * (2 * rng.random() - 1) + mu
-            rng.normalvariate(mu=mu, sigma=sigma)
             mutated_genome += mutagen
          mutated_gene.append(mutated_genome)
 
