@@ -1,5 +1,6 @@
 import unittest
 import evolution as evo
+import math
 
 class TestEvolution(unittest.TestCase):
 
@@ -168,8 +169,6 @@ class TestEvolution(unittest.TestCase):
          for genome in genes:
             self.assertGreater(genome, -10)
             self.assertLess(genome, 10)
-
- 
 
 if __name__ == "__main__":
     unittest.main()

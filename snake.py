@@ -27,7 +27,12 @@ ORIENTATION_TO_POINT = {
    'west'  : Point(x= 0, y=-1),
    'wn'    : Point(x=-1, y=-1)
 }
-
+DIRECTION_TO_ORIENTATION = {
+   'left': 'west',
+   'up': 'north',
+   'right': 'east',
+   'down': 'south'
+}
 
 def get_tail_direction(snake):
    tail = snake[0]
@@ -148,22 +153,27 @@ def get_apple_to_snake_orientation(snake, apple):
    orientation = get_point_to_point_orientation(snake_head, apple)
    return orientation
 
-def get_possible_moves(snake_to_tail_distances):
-   raise DeprecationWarning()
-   hot_encoded_possibilities = [1, 1, 1, 1]
-   for i, distance in enumerate(snake_to_tail_distances):
-      if distance == 0:
-         hot_encoded_possibilities[i] = 0
+# def get_possible_moves(snake_to_tail_distances):
+#    raise DeprecationWarning()
+#    hot_encoded_possibilities = [1, 1, 1, 1]
+#    for i, distance in enumerate(snake_to_tail_distances):
+#       if distance == 0:
+#          hot_encoded_possibilities[i] = 0
    
-   return hot_encoded_possibilities
+#    return hot_encoded_possibilities
 
 def get_snake_to_wall_distance(snake, grid_size, binary=False):
    head = snake[-1]
-   distance_to_left = head.y + 1
-   distance_to_up = head.x + 1
-   distance_to_right = grid_size - head.y
-   distance_to_down = grid_size - head.x
-   label = [distance_to_left, distance_to_up, distance_to_right, distance_to_down]
+   d_to_west = head.y + 1
+   d_to_north = head.x + 1
+   d_to_east = grid_size - head.y
+   d_to_south = grid_size - head.x
+   d_to_ne = d_to_north if d_to_north < d_to_east else d_to_east
+   d_to_es = d_to_east if d_to_east < d_to_south else d_to_south
+   d_to_sw = d_to_south if d_to_south < d_to_west else d_to_west
+   d_to_wn = d_to_west if d_to_west < d_to_north else d_to_north
+
+   label = [d_to_north, d_to_ne, d_to_east, d_to_es, d_to_south, d_to_sw, d_to_west, d_to_wn]
 
    if binary:
       label = list(map(lambda d: 1 if d == 1 else 0, label))
@@ -206,11 +216,6 @@ def normalize(features):
 
 def construct_feature_array(direction, snake, apple, grid_size):
    features = []
-
-   # TODO: ASSERT THAT it is so
-   # BINARY YES/NO VISION FOR APPLE/SELF IS BETTER
-   # THAN DISTANCE VISION
-   # wall shall remain a distance function
 
    features += get_snake_to_wall_distance(snake, grid_size, binary=False)
    features = normalize(features)
@@ -350,7 +355,7 @@ def print_grid(grid):
          elif grid[i][j] == 2:
             print('S', end='')
          else:
-            print(' ', end='')
+            print('.', end='')
          print('  ', end='')
       print('\n')
 
@@ -450,7 +455,7 @@ def save_sample(sample, directory='moves_dataset'):
    with open(directory + '/' + name, 'w') as file:
       json.dump(sample, file)
 
-def build_sample(features, direction, label):
+def build_sample(features, direction, possible_moves, label):
    flip = {0: 1, 1: 0}
    hot_encoded_directions = hot_encode_direction(direction)
 
@@ -458,13 +463,13 @@ def build_sample(features, direction, label):
       expected = hot_encoded_directions
    elif label == 'starve':
       expected = [flip[d] for d in hot_encoded_directions]
-      possibles = possible_moves(features)
+      possibles = possible_moves
       # remove the impossible moves from the options
       for i in range(4):
          if possibles[i] == 0:
             expected[i] = 0
    elif label == 'collision':
-      expected = possible_moves(features)
+      expected = possible_moves
    else:
       return None
 
@@ -479,19 +484,23 @@ def build_sample(features, direction, label):
 
    return sample
 
-def possible_moves(features):
-   wall_vision = features[:8]
-   tail_vision = features[8:16]
+def get_possible_moves(snake, grid_size):
+   # this is outdated becouse of wall distances
+   tail = snake.copy()
+   head = tail.pop()
+   wall_distances = get_snake_to_wall_distance(snake, grid_size)
+
+   possible_moves = []
    possible_moves_dict = {'up': 1, 'right': 1, 'down': 1, 'left': 1}
    id_to_direction = {0: 'up', 2: 'right', 4: 'down', 6:'left'}
    
-   for i in range(0, 8, 2):
-      if wall_vision[i] == 1 or tail_vision[i] == 1:
-         direction = id_to_direction[i]
+   for wall_dst, direction in zip(wall_distances, DIRECTIONS):
+      orientation = DIRECTION_TO_ORIENTATION[direction]
+      point = ORIENTATION_TO_POINT[orientation]
+      perimeter = Point(x=head.x + point.x, y=head.y + point.y)
+      if wall_dst == 1 or perimeter in tail:
          possible_moves_dict[direction] = 0
-   
-   possible_moves = []
-   for direction in DIRECTIONS:
+
       possible_moves.append(possible_moves_dict[direction])
    
    return possible_moves
@@ -499,7 +508,7 @@ def possible_moves(features):
 def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=SnakeNet(), register_moves=False):
    grid_size = 10
    grid = initialize_grid(grid_size=grid_size)
-   snake, direction = generate_snake(4, grid_size) 
+   snake, direction = generate_snake(2, grid_size) 
    apple = generate_new_apple(snake, grid_size)
 
    game_is_lost = False
@@ -517,12 +526,14 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
             print_grid(grid)
          
          features = construct_feature_array(direction, snake, apple, grid_size)
+         # possible_moves = get_possible_moves(snake, grid_size)
          new_direction = net_predict_next_direction(net, features)
+
          direction = validate_direction(direction, new_direction)
          does_get_apple = advance(snake, direction, apple)
          
          if does_get_apple:
-            if register_moves: save_sample(build_sample(features, direction, label='apple'))
+            # if register_moves: save_sample(build_sample(features, direction, possible_moves, label='apple'))
             points += 1
             moves_to_get_apple.append(moves_without_apple)
             moves_without_apple = 0
@@ -530,9 +541,9 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
 
          if collision:
             game_is_lost = check_collision(snake, grid_size)
-            bad_move = build_sample(features, direction, label='collision')
-            if register_moves and game_is_lost:
-               save_move(bad_move)
+            # bad_move = build_sample(features, direction, possible_moves, label='collision')
+            # if register_moves and game_is_lost:
+            #    save_move(bad_move)
 
          sleep(step_time)
          moves += 1
@@ -540,9 +551,9 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
 
          if moves_without_apple > moves_to_lose:
             game_is_lost = True
-            bad_move = build_sample(features, direction, label='starve')
-            if register_moves:
-               save_move(bad_move)
+            # bad_move = build_sample(features, direction, possible_moves, label='starve')
+            # if register_moves:
+            #    save_move(bad_move)
 
    except KeyboardInterrupt:
       pass
@@ -569,7 +580,5 @@ if __name__ == "__main__":
    )
 
    print(score, moves, avg_moves_to_get_apple)
-
-# TODO: MAKE BETTER SAMPLES WITH NARROWED OPTIONS as expected
 
 

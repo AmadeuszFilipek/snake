@@ -16,7 +16,7 @@ class SnakeNet:
       self.model = models.Sequential()
       # first layer is already a working layer, there is no -single-input layer
       # self.model.add(layers.Dense(28, activation='relu',input_shape=(28,)))
-      self.model.add(layers.Dense(20, activation='relu', input_shape=(28,)))
+      self.model.add(layers.Dense(20, activation='relu', input_shape=(32,)))
       self.model.add(layers.Dense(12, activation='relu'))
       self.model.add(layers.Dense(4, activation='softmax'))
       

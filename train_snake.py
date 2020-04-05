@@ -6,7 +6,7 @@ import math
 from functools import reduce, wraps
 import multiprocessing as mp
 
-from evolution import evolution_optimise
+from evolution import evolution_optimise, Bounds, shuffle_crossover
 
 from snake import play
 from neural_net import SnakeNet
@@ -30,7 +30,7 @@ def target_function(parameters):
    apply_parameters_to_model(net, parameters)
    points = []
    moves = []
-   tries = 3
+   tries = 1
 
    for t in range(tries):
       pts, mvs, avg_moves, sample = play(
@@ -43,22 +43,23 @@ def target_function(parameters):
       points.append(pts)
       moves.append(mvs)
 
-      if sample:
-         net.train_on_single_sample(sample)
+      # if sample:
+      #    net.train_on_single_sample(sample)
    
-   # avg_points = sum(points) / len(points)
-   # avg_moves = sum(moves) / len(moves)
+   avg_points = sum(points) / len(points)
+   avg_moves = sum(moves) / len(moves)
    
-   cost = cost_function(pts, mvs)
-   new_parameters = get_flat_weights(net)
+   cost = cost_function(avg_points, avg_moves)
+   # new_parameters = get_flat_weights(net)
    net = None
 
-   return cost, new_parameters
+   return cost
 
 def cost_function(points, moves):
    # minus sign for minimization
-   result = - 1 * 500 * points * points * math.exp(points) \
-            - moves + points * math.sqrt(moves)
+   # result = - 1 * 500 * points * points * math.exp(points) \
+            # - moves + points * math.sqrt(moves)
+   result = - points
    return result
 
 def shape_parameters(shapes, parameters):
@@ -112,14 +113,15 @@ if __name__ == "__main__":
    best_snake = evolution_optimise(
       target_function,
       dimensions,
-      population_size=100,
+      crossover_operator=shuffle_crossover(mixing_rate=0.5),
+      population_size=500,
       generations=1000,
       should_load_population=True,
-      load_directory='train_new_3',
+      load_directory='train_32_inputs_investigation',
       should_save_population=True,
-      save_directory='train_new_3',
+      save_directory='train_32_inputs_investigation',
       workers=4,
-      allowed_seconds= 60 * 60 * 8,
+      allowed_seconds= 60 * 60 * 8
    )
 
    cost, pos = best_snake.cost, best_snake.gene
