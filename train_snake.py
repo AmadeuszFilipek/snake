@@ -133,10 +133,10 @@ if __name__ == "__main__":
       crossover_operators=crossover_operators,
       mutation_operators=mutation_operators,
       population_size=500,
-      generations=3,
+      generations=1000,
       should_load_population=True,
       load_directory='train_32_inputs_investigation',
-      should_save_population=False,
+      should_save_population=True,
       save_directory='train_32_inputs_investigation',
       workers=4,
       allowed_seconds= 60 * 60 * 8
