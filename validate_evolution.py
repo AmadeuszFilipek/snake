@@ -18,7 +18,7 @@ if __name__ == "__main__":
    ]
 
    mutation_operators = [
-      mo.gauss_mutate(mu=0, sigma=0.05),\
+      mo.gauss_mutate(mu=0, sigma=0.05),
       mo.spike_mutate(),
       mo.negate_mutate(),
       mo.univariate_mutate(mu=0, sigma=0.05),
