@@ -15,11 +15,9 @@ Individual = namedtuple('Individual', ['gene', 'cost'])
 
 PARENT_RATE = 0.05
 
-# shall be low so that there is movement but not much disturbance
-MUTATION_PROBABILITY = 0.05
-# zazwyczaj rzędu 1%. Jest ono niskie, ponieważ zbyt silna mutacja przynosi 
-# efekt odwrotny do zamierzonego: zamiast subtelnie różnicować dobre rozwiązania - niszczy je.
-# Stąd w procesie ewolucji mutacja ma znaczenie drugorzędne, szczególnie w przypadku długich chromosomów. 
+MUTATIONS_PER_SPECIMEN = 1
+MUTATION_PROBABILITY = 0.01
+
 BINARY_RESOLUTION = 5
 
 FLIP_BIT = {'0': '1', '1': '0'}
@@ -176,15 +174,19 @@ def mutate(population, mutation_operators):
 
    for specimen in population:
 
-      mutated_gene = []
+      mutated_gene = specimen.gene.copy()
+      mutations = 0
+      mutated_ids = []
 
-      for genome in specimen.gene:
-         mutated_genome = genome
-         is_mutated = rng.random() < MUTATION_PROBABILITY
-         if (is_mutated):
-            mutation_operator = rng.choice(mutation_operators)
-            mutated_genome = mutation_operator(genome)
-         mutated_gene.append(mutated_genome)
+      while mutations < MUTATIONS_PER_SPECIMEN:
+         genome_id = rng.randint(0, len(specimen.gene) - 1)
+         while genome_id in mutated_ids:
+            genome_id = rng.randint(0, len(specimen.gene) - 1)
+         mutated_ids.append(genome_id)
+
+         mutation_operator = rng.choice(mutation_operators)
+         mutated_gene[genome_id] = mutation_operator(mutated_gene[genome_id])
+         mutations += 1
 
       mutant = Individual(gene=mutated_gene, cost=np.inf)
       mutated_population.append(mutant)

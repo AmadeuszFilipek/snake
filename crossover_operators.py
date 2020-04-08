@@ -89,3 +89,35 @@ def average_crossover(ratio=0.5):
       return boy, girl
 
    return lambda_average_crossover
+
+def single_point_crossover():
+   ''' classical single point crossover, take two genes,
+       cut them at random point and glue the parts together
+   '''
+
+   def lambda_single_point_crossover(father, mother):
+      crosspoint = rng.choice(range(len(father.gene)))
+      
+      boy_gene = father.gene[:crosspoint] + mother.gene[crosspoint:]
+      girl_gene = mother.gene[:crosspoint] + father.gene[crosspoint:]
+
+      boy = Individual(gene=boy_gene, cost=np.inf)
+      girl = Individual(gene=girl_gene, cost=np.inf)
+
+      return boy, girl
+
+   return lambda_single_point_crossover
+
+def identity_crossover():
+   ''' classical single point crossover, take two genes,
+       cut them at random point and glue the parts together
+   '''
+
+   def lambda_identity_crossover(father, mother):
+
+      boy = Individual(gene=father.gene, cost=np.inf)
+      girl = Individual(gene=mother.gene, cost=np.inf)
+
+      return boy, girl
+
+   return lambda_single_point_crossover

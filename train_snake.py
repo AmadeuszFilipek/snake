@@ -114,13 +114,15 @@ if __name__ == "__main__":
 
    crossover_operators = [
       xso.shuffle_crossover(mixing_rate=0.1),
-      xso.shuffle_crossover(mixing_rate=0.5),
-      xso.average_crossover(ratio=0.5),
+      # xso.shuffle_crossover(mixing_rate=0.5),
+      # xso.average_crossover(ratio=0.5),
       xso.average_crossover(ratio=0.1),
+      xso.single_point_crossover(),
+      xso.identity_crossover()
    ]
 
    mutation_operators = [
-      mo.gauss_mutate(mu=0, sigma=0.05),
+      mo.gauss_mutate(mu=0, sigma=0.1),
       mo.univariate_mutate(mu=0, sigma=0.1),
       mo.spike_mutate(bounds=Bounds(min=-10, max=10)),
       mo.negate_mutate(),
@@ -135,11 +137,11 @@ if __name__ == "__main__":
       population_size=500,
       generations=1000,
       should_load_population=True,
-      load_directory='train_32_inputs_investigation',
+      load_directory='train_32_inputs',
       should_save_population=True,
       save_directory='train_32_inputs_investigation',
       workers=4,
-      allowed_seconds= 60 * 60 * 8
+      allowed_seconds= 60 * 60 * 1
    )
 
    cost, pos = best_snake.cost, best_snake.gene
