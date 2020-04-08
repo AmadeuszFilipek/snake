@@ -120,4 +120,4 @@ def identity_crossover():
 
       return boy, girl
 
-   return lambda_single_point_crossover
+   return lambda_identity_crossover
