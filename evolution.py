@@ -13,10 +13,10 @@ Bounds = namedtuple('Bounds', ['min', 'max'])
 Bin = namedtuple('Bin', ['min', 'max'])
 Individual = namedtuple('Individual', ['gene', 'cost'])
 
-PARENT_RATE = 0.05
+PARENT_RATE = 0.5
 
 MUTATIONS_PER_SPECIMEN = 1
-MUTATION_PROBABILITY = 0.01
+MUTATION_PROBABILITY = 0.05
 
 BINARY_RESOLUTION = 5
 
@@ -88,21 +88,34 @@ def construct_bins(population):
 def number_in_bin(n, b):
    return (n > b.min) and (n < b.max)
 
+def roulette_choose(bins, population):
+   the_chosen_one = None
+   random = rng.random()
+   for b, specimen in zip(bins, population):
+      if number_in_bin(random, b):
+         the_chosen_one = specimen
+         break
+   return the_chosen_one
+
 def select_mating_pool(population, parents_pool_size):
+   
    parents = []
    candidates = population.copy()
+   candidates.sort(key=lambda x: x.cost)
+   
+   parents = candidates[:parents_pool_size]
 
-   for _ in range(parents_pool_size):
-      bins = construct_bins(candidates)
+   # for _ in range(parents_pool_size):
+   #    bins = construct_bins(candidates)
 
-      random = rng.random()
-      for i in range(len(candidates)):
-         if number_in_bin(random, bins[i]):
-            selected_individual_id = i
-            break
+   #    random = rng.random()
+   #    for i in range(len(candidates)):
+   #       if number_in_bin(random, bins[i]):
+   #          selected_individual_id = i
+   #          break
 
-      parents.append(candidates[selected_individual_id])
-      candidates.pop(selected_individual_id)
+      # parents.append(candidates[selected_individual_id])
+      # candidates.pop(selected_individual_id)
       
    return parents
 
@@ -139,10 +152,13 @@ def crossover(parents, offspring_size, crossover_operators, binary=True):
       raise ValueError("Requested offspring size not even.")
    
    children = []
+   bins = construct_bins(parents)
    
    for _ in range(offspring_size // 2):
-      father, mother = rng.sample(parents, k=2) 
-      
+
+      father = roulette_choose(bins, parents)
+      mother = roulette_choose(bins, parents)
+
       crossover_operator = rng.choice(crossover_operators)
       boy, girl = crossover_operator(father, mother)
 
@@ -174,24 +190,45 @@ def mutate(population, mutation_operators):
 
    for specimen in population:
 
-      mutated_gene = specimen.gene.copy()
-      mutations = 0
-      mutated_ids = []
+      mutated_gene = []
 
-      while mutations < MUTATIONS_PER_SPECIMEN:
-         genome_id = rng.randint(0, len(specimen.gene) - 1)
-         while genome_id in mutated_ids:
-            genome_id = rng.randint(0, len(specimen.gene) - 1)
-         mutated_ids.append(genome_id)
-
-         mutation_operator = rng.choice(mutation_operators)
-         mutated_gene[genome_id] = mutation_operator(mutated_gene[genome_id])
-         mutations += 1
+      for genome in specimen.gene:
+         mutated_genome = genome
+         is_mutated = rng.random() < MUTATION_PROBABILITY
+         if (is_mutated):
+            mutation_operator = rng.choice(mutation_operators)
+            mutated_genome = mutation_operator(genome)
+         mutated_gene.append(mutated_genome)
 
       mutant = Individual(gene=mutated_gene, cost=np.inf)
       mutated_population.append(mutant)
    
    return mutated_population
+
+# def mutate(population, mutation_operators):
+#    ''' version with constant number of mutations '''
+#    mutated_population = []
+
+#    for specimen in population:
+
+#       mutated_gene = specimen.gene.copy()
+#       mutations = 0
+#       mutated_ids = []
+
+#       while mutations < MUTATIONS_PER_SPECIMEN:
+#          genome_id = rng.randint(0, len(specimen.gene) - 1)
+#          while genome_id in mutated_ids:
+#             genome_id = rng.randint(0, len(specimen.gene) - 1)
+#          mutated_ids.append(genome_id)
+
+#          mutation_operator = rng.choice(mutation_operators)
+#          mutated_gene[genome_id] = mutation_operator(mutated_gene[genome_id])
+#          mutations += 1
+
+#       mutant = Individual(gene=mutated_gene, cost=np.inf)
+#       mutated_population.append(mutant)
+   
+#    return mutated_population
 
 def binary_mutate(population, bounds):
 
@@ -310,8 +347,7 @@ def evolution_optimise(
          break
 
       # continue iteration
-      parents = select_mating_pool(population, parent_pool_size - 1)
-      parents.append(best_individual)
+      parents = select_mating_pool(population, parent_pool_size)
 
       children = crossover(parents, offspring_size, crossover_operators)
       

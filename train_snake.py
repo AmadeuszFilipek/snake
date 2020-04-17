@@ -61,7 +61,7 @@ def cost_function(points, moves):
    # minus sign for minimization
    # result = - 1 * 500 * points * points * math.exp(points) \
             # - moves + points * math.sqrt(moves)
-   result = - points
+   result = - math.exp(points)
    return result
 
 def shape_parameters(shapes, parameters):
@@ -113,7 +113,7 @@ if __name__ == "__main__":
    dimensions = total_parameters(net.get_model_weight_shapes())
 
    crossover_operators = [
-      xso.shuffle_crossover(mixing_rate=0.1),
+      xso.shuffle_crossover(mixing_rate=0.5),
       # xso.shuffle_crossover(mixing_rate=0.5),
       # xso.average_crossover(ratio=0.5),
       xso.average_crossover(ratio=0.1),
@@ -122,11 +122,12 @@ if __name__ == "__main__":
    ]
 
    mutation_operators = [
-      mo.gauss_mutate(mu=0, sigma=0.1),
-      mo.univariate_mutate(mu=0, sigma=0.1),
-      mo.spike_mutate(bounds=Bounds(min=-10, max=10)),
-      mo.negate_mutate(),
-      mo.null_mutate()
+      mo.gauss_mutate(mu=0, sigma=0.2),
+      # mo.gauss_rate_mutate(sigma=0.2),
+      # mo.univariate_mutate(mu=0, sigma=1),
+      # mo.spike_mutate(bounds=Bounds(min=-1, max=1)),
+      # mo.negate_mutate(),
+      # mo.null_mutate()
    ]
    
    best_snake = evolution_optimise(
@@ -134,14 +135,14 @@ if __name__ == "__main__":
       dimensions,
       crossover_operators=crossover_operators,
       mutation_operators=mutation_operators,
-      population_size=500,
-      generations=1000,
-      should_load_population=True,
-      load_directory='train_32_inputs',
+      population_size=10,
+      generations=10,
+      should_load_population=False,
+      load_directory='big_population_2',
       should_save_population=True,
-      save_directory='train_32_inputs_investigation',
-      workers=4,
-      allowed_seconds= 60 * 60 * 1
+      save_directory='profile_tests',
+      workers=1,
+      allowed_seconds= 60 * 60 * 16
    )
 
    cost, pos = best_snake.cost, best_snake.gene

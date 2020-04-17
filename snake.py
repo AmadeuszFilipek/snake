@@ -573,7 +573,7 @@ if __name__ == "__main__":
    score, moves, avg_moves_to_get_apple, bad_move = play(
    display=True, 
    step_time=0.05, 
-   moves_to_lose=50,
+   moves_to_lose=100,
    collision=True,
    net=net,
    register_moves=False

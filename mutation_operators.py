@@ -15,6 +15,16 @@ def gauss_mutate(mu=0, sigma=1):
       return mutated_genome
    return lambda_gauss_mutate
 
+def gauss_rate_mutate(mu=0, sigma=1):
+   def lambda_gauss_rate_mutate(genome):
+
+      mutated_genome = genome
+      mutagen = rng.normalvariate(mu=mu, sigma=sigma)
+      mutated_genome *= (1 + mutagen)
+
+      return mutated_genome
+   return lambda_gauss_rate_mutate
+
 def negate_mutate():
    def lambda_negate_mutate(genome):
 
@@ -29,7 +39,7 @@ def univariate_mutate(mu=0, sigma=1):
 
       mutated_genome = genome
       mutagen = sigma * (2 * rng.random() - 1) + mu
-      mutated_genome += mutagen
+      mutated_genome = mutagen
 
       return mutated_genome
    return lambda_univariate_mutate
