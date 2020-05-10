@@ -6,7 +6,6 @@ import os, os.path
 from math import sqrt
 import numpy as np
 import json
-# import code
 
 from pynput.keyboard import Key, Listener
 
@@ -33,6 +32,13 @@ DIRECTION_TO_ORIENTATION = {
    'right': 'east',
    'down': 'south'
 }
+
+def construct_gridpoints(grid_size):
+   gridpoints = set()
+   for x, y in it.product(range(grid_size), range(grid_size)):
+      gridpoints.add(Point(x=x, y=y))
+
+   return gridpoints
 
 def get_tail_direction(snake):
    tail = snake[0]
@@ -113,6 +119,9 @@ def get_snake_to_apple_distances(snake, apple, grid_size, binary=True):
    else:
       distances = [np.inf] * 8
    
+   if apple is None:
+      return distances
+   
    for i, orientation in enumerate(WORLD_ROSE):
       dist = get_point_to_point_distance(head, apple, orientation, grid_size)
       if np.isinf(dist):
@@ -152,15 +161,6 @@ def get_apple_to_snake_orientation(snake, apple):
    snake_head = snake[-1]
    orientation = get_point_to_point_orientation(snake_head, apple)
    return orientation
-
-# def get_possible_moves(snake_to_tail_distances):
-#    raise DeprecationWarning()
-#    hot_encoded_possibilities = [1, 1, 1, 1]
-#    for i, distance in enumerate(snake_to_tail_distances):
-#       if distance == 0:
-#          hot_encoded_possibilities[i] = 0
-   
-#    return hot_encoded_possibilities
 
 def get_snake_to_wall_distance(snake, grid_size, binary=False):
    head = snake[-1]
@@ -298,24 +298,24 @@ def check_collision(snake, grid_size):
    tail_collision = check_tail_collision(snake)
    return wall_collision or tail_collision
 
+def is_snake_max_length(snake, grid_size): 
+  return len(snake) == grid_size * grid_size
+
 def gets_apple(snake, apple):
+   if apple is None:
+      return False
+   
    snake_head = snake[-1]
    if snake_head.x == apple.x and snake_head.y == apple.y:
       return True
    return False
 
-def generate_new_apple(snake, grid_size):
-   apple_on_snake = True
-   
-   while apple_on_snake:
-      apple_x, apple_y = int(grid_size * rnd.random()), int(grid_size * rnd.random())
-
-      for p in snake:
-         apple_on_snake = False
-         if p.x == apple_x and p.y == apple_y:
-            apple_on_snake = True
-            break
-   return Point(apple_x, apple_y)
+def generate_new_apple(snake, gridpoints):
+   possibilities = gridpoints.difference(set(snake))
+   if len(possibilities) == 0:
+      return None
+   new_apple_position = rnd.sample(possibilities, 1)
+   return new_apple_position[0]
 
 def advance(snake, direction, apple):
    
@@ -337,7 +337,8 @@ def update_grid(snake, grid, apple):
          grid[p.x][p.y] = 1
       snake_head = snake[-1]
       grid[snake_head.x][snake_head.y] = 2
-      grid[apple.x][apple.y] = -1
+      if apple:
+         grid[apple.x][apple.y] = -1
    except IndexError:
       print(snake)
       print(apple)
@@ -359,7 +360,7 @@ def print_grid(grid):
          print('  ', end='')
       print('\n')
 
-def initialize_grid(grid_size=20):
+def initialize_grid(grid_size):
    grid = [[0 for i in range(grid_size)] for _ in range(grid_size)]
    return grid
 
@@ -374,15 +375,17 @@ def initalize_snake(length, grid_size):
 def generate_snake(length, grid_size):
    if length < 1: raise ValueError("Invalid snake length")
    snake = deque()
-   x, y = int(grid_size / length * rnd.random() + length), \
-          int(grid_size / length * rnd.random() + length)
+   x, y = int(grid_size * rnd.random()), \
+          int(grid_size * rnd.random())
    snake.append(Point(x=x, y=y))
-   direction = rnd.choice(DIRECTIONS)
 
    while len(snake) < length:
       head = snake[-1]
+      direction = rnd.choice(DIRECTIONS)
       point = move_point(head, direction)
       snake.append(point)
+      if check_collision(snake, grid_size):
+         snake.pop()
 
    return snake, direction
 
@@ -508,52 +511,53 @@ def get_possible_moves(snake, grid_size):
 def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=SnakeNet(), register_moves=False):
    grid_size = 10
    grid = initialize_grid(grid_size=grid_size)
+   gridpoints = construct_gridpoints(grid_size)
    snake, direction = generate_snake(2, grid_size) 
-   apple = generate_new_apple(snake, grid_size)
+   apple = generate_new_apple(snake, gridpoints)
 
-   game_is_lost = False
+   starving = False
+   collided = False
+   finished = False
    points = 0
    moves = 0
    moves_without_apple = 1
    moves_to_get_apple = []
-   bad_move = None
 
    # main game loop
    try:
-      while not game_is_lost:
+      while True:
          if display:
             update_grid(snake, grid, apple)
             print_grid(grid)
+            sleep(step_time)
          
          features = construct_feature_array(direction, snake, apple, grid_size)
-         # possible_moves = get_possible_moves(snake, grid_size)
          new_direction = net_predict_next_direction(net, features)
-
          direction = validate_direction(direction, new_direction)
          does_get_apple = advance(snake, direction, apple)
-         
-         if does_get_apple:
-            # if register_moves: save_sample(build_sample(features, direction, possible_moves, label='apple'))
-            points += 1
-            moves_to_get_apple.append(moves_without_apple)
-            moves_without_apple = 0
-            apple = generate_new_apple(snake, grid_size)
 
-         if collision:
-            game_is_lost = check_collision(snake, grid_size)
-            # bad_move = build_sample(features, direction, possible_moves, label='collision')
-            # if register_moves and game_is_lost:
-            #    save_move(bad_move)
-
-         sleep(step_time)
          moves += 1
          moves_without_apple += 1
 
+         if does_get_apple:
+            points += 1
+            moves_to_get_apple.append(moves_without_apple)
+            moves_without_apple = 0
+
+         # check end-game conditions
          if moves_without_apple > moves_to_lose:
-            game_is_lost = True
-            # bad_move = build_sample(features, direction, possible_moves, label='starve')
-            # if register_moves:
-            #    save_move(bad_move)
+            starving = True
+         
+         if collision:
+            collided = check_collision(snake, grid_size)
+
+         if starving or collided:
+            break
+
+         # continue loop
+         if does_get_apple:
+            apple = generate_new_apple(snake, gridpoints)
+
 
    except KeyboardInterrupt:
       pass
@@ -561,16 +565,15 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
    if points > 0:
       avg_moves_to_get_apple = sum(moves_to_get_apple) / points
    else:
-      avg_moves_to_get_apple = 10000
+      avg_moves_to_get_apple = np.inf
 
-   return points, moves, avg_moves_to_get_apple, bad_move
+   return points, moves, avg_moves_to_get_apple
 
 
 if __name__ == "__main__":
    net = SnakeNet()
-   # net.load_weights('./model/best_weights')
-   net.load_weights('./model/best_weights')
-   score, moves, avg_moves_to_get_apple, bad_move = play(
+   net.load_weights('./my_model/best_weights.json')
+   score, moves, avg_moves_to_get_apple = play(
    display=True, 
    step_time=0.05, 
    moves_to_lose=100,
