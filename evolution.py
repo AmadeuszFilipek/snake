@@ -8,6 +8,9 @@ import glob
 import json
 import time
 import code
+import math
+
+import neural_net as net
 
 Bounds = namedtuple('Bounds', ['min', 'max'])
 Bin = namedtuple('Bin', ['min', 'max'])
@@ -15,10 +18,8 @@ Individual = namedtuple('Individual', ['gene', 'cost'])
 
 PARENT_RATE = 0.5
 
-MUTATIONS_PER_SPECIMEN = 1
-MUTATION_PROBABILITY = 0.05
-
-BINARY_RESOLUTION = 5
+# MUTATIONS_PER_SPECIMEN = 1
+# BINARY_RESOLUTION = 5
 
 FLIP_BIT = {'0': '1', '1': '0'}
 
@@ -98,25 +99,11 @@ def roulette_choose(bins, population):
    return the_chosen_one
 
 def select_mating_pool(population, parents_pool_size):
-   
    parents = []
    candidates = population.copy()
    candidates.sort(key=lambda x: x.cost)
-   
    parents = candidates[:parents_pool_size]
 
-   # for _ in range(parents_pool_size):
-   #    bins = construct_bins(candidates)
-
-   #    random = rng.random()
-   #    for i in range(len(candidates)):
-   #       if number_in_bin(random, bins[i]):
-   #          selected_individual_id = i
-   #          break
-
-      # parents.append(candidates[selected_individual_id])
-      # candidates.pop(selected_individual_id)
-      
    return parents
 
 def single_point_binary_crossover(father, mother, bounds):
@@ -167,13 +154,18 @@ def crossover(parents, offspring_size, crossover_operators, binary=True):
 
    return children
 
-def evaluate_fitness(target, population, workers=1):
+def evaluate_fitness(target, population, workers):
    
    updated_population = []
 
-   genes = gene_iterator(population)
+   genes = list(gene_iterator(population))
+   rng.shuffle(genes)
+   # chunk_size = int(len(genes) / workers)
+   # gene_chunks = [genes[i:i + chunk_size] for i in range(0, len(genes), chunk_size)]
+
    if workers > 1:
-      with Pool(processes=workers) as pool:
+      with Pool(processes=workers,  maxtasksperchild=50) as pool:
+         # results = [pool.apply(wrapper, (target, gene_chunk, net)) for gene_chunk, net in zip(gene_chunks, nets)]
          results = pool.map(target, genes)
    else:
       results = [target(g) for g in genes]
@@ -185,7 +177,15 @@ def evaluate_fitness(target, population, workers=1):
 
    return updated_population
 
-def mutate(population, mutation_operators):
+def apply_constraints(genome, bounds):
+   if genome > bounds.max:
+      return bounds.max
+   elif genome < bounds.min:
+      return bounds.min
+   else:
+      return genome
+
+def mutate(population, bounds, mutation_probability, mutation_operators):
    mutated_population = []
 
    for specimen in population:
@@ -194,10 +194,11 @@ def mutate(population, mutation_operators):
 
       for genome in specimen.gene:
          mutated_genome = genome
-         is_mutated = rng.random() < MUTATION_PROBABILITY
+         is_mutated = rng.random() < mutation_probability
          if (is_mutated):
             mutation_operator = rng.choice(mutation_operators)
             mutated_genome = mutation_operator(genome)
+            mutated_genome = apply_constraints(genome, bounds)
          mutated_gene.append(mutated_genome)
 
       mutant = Individual(gene=mutated_gene, cost=np.inf)
@@ -205,33 +206,8 @@ def mutate(population, mutation_operators):
    
    return mutated_population
 
-# def mutate(population, mutation_operators):
-#    ''' version with constant number of mutations '''
-#    mutated_population = []
-
-#    for specimen in population:
-
-#       mutated_gene = specimen.gene.copy()
-#       mutations = 0
-#       mutated_ids = []
-
-#       while mutations < MUTATIONS_PER_SPECIMEN:
-#          genome_id = rng.randint(0, len(specimen.gene) - 1)
-#          while genome_id in mutated_ids:
-#             genome_id = rng.randint(0, len(specimen.gene) - 1)
-#          mutated_ids.append(genome_id)
-
-#          mutation_operator = rng.choice(mutation_operators)
-#          mutated_gene[genome_id] = mutation_operator(mutated_gene[genome_id])
-#          mutations += 1
-
-#       mutant = Individual(gene=mutated_gene, cost=np.inf)
-#       mutated_population.append(mutant)
-   
-#    return mutated_population
-
 def binary_mutate(population, bounds):
-
+   raise DeprecationWarning
    for mutant in population:
       gene_length = len(mutant.gene)
 
@@ -267,8 +243,11 @@ def load_population(load_directory):
    population = []
    for file_path in json_file_paths:
       with open(file_path, 'r') as file:
-         data = json.load(file)
-      
+         try:
+            data = json.load(file)
+         except json.JSONDecodeError:
+            continue
+
       specimen = reconstruct_specimen(data)
       population.append(specimen)
    
@@ -282,6 +261,14 @@ def save_population(population, directory):
       name = 'snake_{}.json'.format(i)
       with open(directory + '/' + name, 'w') as file:
          serialized_specimen = json.dump(specimen, file)
+
+# def log_results(population, generation):
+#    try:
+#       with open("fitness_data.csv", "a+") as file:
+#          for i, p in enumerate(population):
+#             file.write('{},{},{}\n'.format(generation, i, p.cost))
+#    except IOError:
+#       print("Unable to log data to file")
 
 def evolution_optimise(
       target,
@@ -314,25 +301,41 @@ def evolution_optimise(
       population = [generate_individual(dimensions, bounds) for _ in range(population_size)]
 
    best_individual = population[0]
+   generation_best_individual = population[0]
    children = population
    parents = []
+   progres_stagnation = 0
+   mutation_probability = 0.05
 
    # main generation loop
    for gen in range(generations):
 
       # evaluate fitness
-      children = evaluate_fitness(target, children, workers=workers)
-      population = children + parents
+      population = evaluate_fitness(target, population, workers)
 
       # find the best one
+      generation_avg_result = 0
       for p in population:
+         generation_avg_result += p.cost
          if p.cost < best_individual.cost:
             best_gene = p.gene.copy()
             best_individual = Individual(gene=best_gene, cost=p.cost)
-      
+      generation_avg_result = generation_avg_result / population_size
+
+      # compare this generation to previous
+      new_gen_best = min(population, key=lambda p: p.cost)
+      was_there_any_progress = False
+      if new_gen_best.cost < generation_best_individual.cost:
+         was_there_any_progress = True
+      generation_best_individual = new_gen_best
+
       # display the results
       if display:
-         print("Generation {}/{}: best cost: {:.2e}".format(gen, generations, best_individual.cost))
+         print("Generation {}/{}:  avg cost: {:.2e} gen best: {:.2e} global best cost: {:.2e}".format(
+            gen, generations, generation_avg_result, generation_best_individual.cost, best_individual.cost))
+
+      # log the results
+      # log_results(population, gen)
 
       # save the population
       if should_save_population:
@@ -346,12 +349,11 @@ def evolution_optimise(
             print("Evolution loop ran out of time. Finishing optimisation. Total runtime: {}".format(elapsed_seconds))
          break
 
-      # continue iteration
+      # construct new population
       parents = select_mating_pool(population, parent_pool_size)
-
       children = crossover(parents, offspring_size, crossover_operators)
-      
-      children = mutate(children, mutation_operators)
+      children = mutate(children, bounds, mutation_probability, mutation_operators)
+      population = parents + children
 
    return best_individual
 
