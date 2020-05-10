@@ -1,110 +1,119 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # disable tensorflow debug info
-
-import tensorflow as tf
-import tensorflowjs as tfjs
-from tensorflow.keras import layers, models
-import matplotlib.pyplot as plt
 import numpy as np
 import glob
 import json
+from functools import reduce
+import pathlib
+
+def alternate(i):
+    i = iter(i)
+    while True:
+        yield(i.__next__(), i.__next__())
+
+def relu(x):
+   return x * (x > 0)
+
+def softmax(x):
+   distribution = np.exp(x)
+   return distribution / np.sum(distribution)
+
+def shape_parameters(shapes, parameters):
+   ''' return parameters shaped accordingly as numpy arrays'''
+   total = total_parameters(shapes)
+   if len(parameters) < total:
+      raise ValueError("Parameters list is too short {}".format(len(parameters)))
+   
+   shaped_arrays = []
+   for shape in shapes:
+      chunk_length = reduce(lambda x,y: x * y, shape)
+      parameter_chunk = parameters[0:chunk_length]
+      parameters = parameters[chunk_length:]
+      shaped_slice = np.reshape(parameter_chunk, shape)
+      shaped_arrays.append(shaped_slice)
+
+   return np.array(shaped_arrays)
+
+def total_parameters(shapes):
+   ''' calculate all parameters from their shapes '''
+   parameters = 0
+   for shape in shapes:
+      parameters += reduce(lambda x,y: x * y, shape)
+   return parameters
+
+NAME_TO_FUNCTION = {'relu': relu, 'softmax': softmax}
 
 class SnakeNet:
 
    def __init__(self):
-      # elu, tanh, softplus
-      self.model = models.Sequential()
-      # first layer is already a working layer, there is no -single-input layer
-      # self.model.add(layers.Dense(28, activation='relu',input_shape=(28,)))
-      self.model.add(layers.Dense(20, activation='relu', input_shape=(32,)))
-      self.model.add(layers.Dense(12, activation='relu'))
-      self.model.add(layers.Dense(4, activation='softmax'))
+      # shapes: [(32, 20), (20,), (20, 12), (12,), (12, 4), (4,)]
+      layer_1      = {'activation':'relu', 'neurons': 20, 'weights': np.ones((32,20)), 'bias': np.ones(20,)}
+      layer_2      = {'activation':'relu', 'neurons': 12, 'weights': np.ones((20,12)), 'bias': np.ones(12,)}
+      output_layer = {'activation':'softmax', 'neurons': 4, 'weights': np.ones((12,4)), 'bias': np.ones(4,)}
+
+      self.layers = [layer_1, layer_2, output_layer]
+
+   def predict(self, x):
+      propagated_signal = x
+
+      for layer in self.layers:
+         weights_matrix = layer['weights']
+         bias_vector = layer['bias']
+         activation_function = NAME_TO_FUNCTION[layer['activation']]
+         aggregated_signal = np.sum(propagated_signal * weights_matrix.T, axis=1) + bias_vector
+         propagated_signal = activation_function(aggregated_signal)
       
-      self.compile()
+      return propagated_signal
 
-   def compile(self):
-      self.model.compile(
-         optimizer='adam',
-         loss='mean_squared_error' #tf.keras.losses.SparseCategoricalCrossentropy()
-         )
-
-   def load_data(self, directory):
-      if not os.path.isdir(directory):
-         raise ValueError('Is not a directory: ' + directory)
-      
-      events_of_interest = ['collision', 'starve']
-
-      json_file_paths = glob.glob(directory + '/*.json')
-      
-      features_list = []
-      labels_list = []
-      for file_path in json_file_paths:
-         with open(file_path, 'r') as file:
-            data = json.load(file)
-            label = data['label']
-            if label not in events_of_interest:
-               continue
-            features_list.append(data['features'])
-            labels_list.append(data['expected_result'])
-
-      return np.array(features_list), np.array(labels_list)
-
-   def train(self):
-      features, labels = self.load_data('moves_dataset')
-      self.model.fit(features, labels, epochs=10)
-
-   def train_on_single_sample(self, sample, ignore_events=[]):
-      event = sample['label']
-      if event in ignore_events:
-         return
-      features = [sample['features']] # single batch
-      features = np.array(features)
-      
-      labels = [sample['expected_result']] # single batch
-      labels = np.array(labels)
-      
-      self.model.fit(features, labels, epochs=1, verbose=0)
-
-   def summary(self):
-      self.model.summary()
-
-   def save_model(self, path):
-      tfjs.converters.save_keras_model(self.model, path)
-      
    def save_weights(self, path):
-      self.model.save_weights(path)
+      if not os.path.exists(path):
+         path_obj = pathlib.Path(path)
+         path_obj.parent.mkdir(parents=True, exist_ok=True)
+      with open(path, 'w+') as file:
+         data = json.dump(self.get_flat_weights(), file)
 
    def load_weights(self, path):
-      try:
-         self.model.load_weights(path)
-      except ValueError as e:
-         print("No weights loaded: incompatible model structures.")
+      if not os.path.exists(path):
+         raise ValueError("Path does not exist")
+      with open(path, 'r') as file:
+         data = json.load(file)
+      self.apply_parameters(data)
 
    def predict_next_move(self, features):
-      prepared_features = prepare_features(features)
-      result = self.model.predict(prepared_features)
-      return result[0].tolist()
+      result = self.predict(np.array(features))
+      return result.tolist()
 
    def get_model_weight_shapes(self):
-      weights = self.model.get_weights()
       shapes = []
-      for layer_weights in weights:
-         shapes.append(layer_weights.shape)
+      for layer in self.layers:
+         weights_shape = layer['weights'].shape
+         bias_shape = layer['bias'].shape
+         shapes.append(weights_shape)
+         shapes.append(bias_shape)
       return shapes
 
-   def get_weights(self):
-      return self.model.get_weights()
+   def set_weights(self, weights_table):
+      for layer, (weights, bias) in zip(self.layers, alternate(weights_table)):
+         layer['weights'] = weights
+         layer['bias'] = bias
 
-def prepare_features(features):
-   # single batch
-   wrap_batches = np.array([features])
-   return wrap_batches
+   def get_flat_weights(self):
+      flattened_weights = []
+      
+      for layer in self.layers:
+         weights = layer['weights']
+         bias = layer['bias']
+         flattened_weights += (weights.flatten().tolist())
+         flattened_weights += (bias.flatten().tolist())
+
+      return flattened_weights
+
+   def apply_parameters(self, parameters):
+      shapes = self.get_model_weight_shapes()
+      weights = shape_parameters(shapes, parameters)
+      self.set_weights(weights)
+
+   def total_parameters(self):
+      return total_parameters(self.get_model_weight_shapes())
 
 if __name__ == "__main__":
-   net = SnakeNet()
-   net.summary()
-   net.load_weights('./model/best_weights')
-   # net.compile()
-   net.train()
-   net.save_weights('./test_model/model')
-   # tfjs.converters.save_keras_model(model, './model')
+   pass
