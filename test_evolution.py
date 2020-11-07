@@ -1,5 +1,6 @@
 import unittest
 import evolution as evo
+import crossover_operators as xo
 import math
 
 class TestEvolution(unittest.TestCase):
@@ -145,7 +146,7 @@ class TestEvolution(unittest.TestCase):
 
       father = evo.Individual(gene=[5, 5], cost=0)
       mother = evo.Individual(gene=[5, 5], cost=0)
-      boy, girl = evo.gamma_weighted_crossover(father, mother)
+      boy, girl = xo.gamma_weighted_crossover(father, mother)
 
       self.assertAlmostEqual(boy, girl)
 
@@ -155,7 +156,7 @@ class TestEvolution(unittest.TestCase):
       mother = evo.Individual(gene=[5, 5], cost=0)
       
       for i in range(100):
-         boy, girl = evo.gamma_weighted_crossover(father, mother)
+         boy, girl = xo.gamma_weighted_crossover(father, mother)
          self.assertAlmostEqual(boy, girl)
 
    def test_crossover_different(self):
@@ -164,7 +165,7 @@ class TestEvolution(unittest.TestCase):
       mother = evo.Individual(gene=[10, 10], cost=0)
 
       for i in range(100):
-         boy, girl = evo.gamma_weighted_crossover(father, mother)
+         boy, girl = xo.gamma_weighted_crossover(father, mother)
          genes = boy.gene + girl.gene
          for genome in genes:
             self.assertGreater(genome, -10)
