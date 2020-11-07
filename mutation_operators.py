@@ -5,6 +5,11 @@ import random as rng
 Individual = namedtuple('Individual', ['gene', 'cost'])
 Bounds = namedtuple('Bounds', ['min', 'max'])
 
+def identity_mutate():
+   def lambda_identity_mutate(genome):
+      return genome
+   return lambda_identity_mutate
+
 def gauss_mutate(mu=0, sigma=1):
    def lambda_gauss_mutate(genome):
 
