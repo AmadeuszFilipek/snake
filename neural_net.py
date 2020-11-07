@@ -13,9 +13,21 @@ def alternate(i):
 def relu(x):
    return x * (x > 0)
 
+def sigmoid(x):
+   return 1 / (1 + np.exp(-x))
+
 def softmax(x):
    distribution = np.exp(x)
    return distribution / np.sum(distribution)
+
+def flatten_shaped_parameters(shaped_parameters):
+   ''' return flattened and appended list of parameters '''
+   flattened_weights = []
+      
+   for layer in shaped_parameters:
+      flattened_weights += (layer.flatten().tolist())
+
+   return flattened_weights
 
 def shape_parameters(shapes, parameters):
    ''' return parameters shaped accordingly as numpy arrays'''
@@ -31,7 +43,7 @@ def shape_parameters(shapes, parameters):
       shaped_slice = np.reshape(parameter_chunk, shape)
       shaped_arrays.append(shaped_slice)
 
-   return np.array(shaped_arrays)
+   return shaped_arrays
 
 def total_parameters(shapes):
    ''' calculate all parameters from their shapes '''
@@ -40,7 +52,7 @@ def total_parameters(shapes):
       parameters += reduce(lambda x,y: x * y, shape)
    return parameters
 
-NAME_TO_FUNCTION = {'relu': relu, 'softmax': softmax}
+NAME_TO_FUNCTION = {'relu': relu, 'softmax': softmax, 'sigmoid': sigmoid}
 
 class SnakeNet:
 
@@ -61,7 +73,7 @@ class SnakeNet:
          activation_function = NAME_TO_FUNCTION[layer['activation']]
          aggregated_signal = np.sum(propagated_signal * weights_matrix.T, axis=1) + bias_vector
          propagated_signal = activation_function(aggregated_signal)
-      
+
       return propagated_signal
 
    def save_weights(self, path):
