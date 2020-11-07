@@ -219,15 +219,26 @@ def construct_feature_array(direction, snake, apple, grid_size):
 
    features += get_snake_to_wall_distance(snake, grid_size, binary=False)
    features = normalize(features)
+   # print("snake to wall distance")
+   # print(get_snake_to_wall_distance(snake, grid_size, binary=False))
+   # print(features)
    
    features += get_snake_to_tail_distances(snake, grid_size, binary=True)
+   # print('snake to tail distance')
+   # print(get_snake_to_tail_distances(snake, grid_size, binary=True))
 
    features += get_snake_to_apple_distances(snake, apple, grid_size, binary=True)
+   # print('snake to apple distances')
+   # print(get_snake_to_apple_distances(snake, apple, grid_size, binary=True))
    
    tail_direction = get_tail_direction(snake)
    features += hot_encode_direction(tail_direction)
+   # print('tail direction')
+   # print(hot_encode_direction(tail_direction))
 
    features += hot_encode_direction(direction)
+   # print('head direction')
+   # print(hot_encode_direction(direction))
 
    return features
 
@@ -315,6 +326,24 @@ def generate_new_apple(snake, gridpoints):
    if len(possibilities) == 0:
       return None
    new_apple_position = rnd.sample(possibilities, 1)
+
+   # calculate difficulty for apple collection
+   # difficulty = {}
+   # snake_head = snake[-1]
+   # for possibility in possibilities:
+   #    dx = abs(snake_head.x - possibility.x)
+   #    dy = abs(snake_head.y - possibility.y)
+   #    d = sqrt(dx ** 2 + dy ** 2)
+   #    difficulty[possibility] = d
+
+   # distribution = sum(difficulty.values())
+   # shot = rnd.random() * distribution
+   # plate = 0
+   # for possibility in possibilities:
+   #    plate += difficulty[possibility]
+   #    if plate >= shot:
+   #       return possibility
+
    return new_apple_position[0]
 
 def advance(snake, direction, apple):
@@ -509,11 +538,12 @@ def get_possible_moves(snake, grid_size):
    return possible_moves
 
 def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=SnakeNet(), register_moves=False):
-   grid_size = 10
+   grid_size = 6
    grid = initialize_grid(grid_size=grid_size)
    gridpoints = construct_gridpoints(grid_size)
-   snake, direction = generate_snake(2, grid_size) 
+   snake, direction = generate_snake(2, grid_size)
    apple = generate_new_apple(snake, gridpoints)
+   moves_to_lose = grid_size * grid_size
 
    starving = False
    collided = False
@@ -531,7 +561,14 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
             print_grid(grid)
             sleep(step_time)
          
+         if apple is None:
+            break # you won
+
          features = construct_feature_array(direction, snake, apple, grid_size)
+
+         # input_direction = input('->')
+         # new_direction = {'a':'left', 'w':'up', 's':'down', 'd':'right'}[input_direction]
+
          new_direction = net_predict_next_direction(net, features)
          direction = validate_direction(direction, new_direction)
          does_get_apple = advance(snake, direction, apple)
@@ -547,7 +584,7 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
          # check end-game conditions
          if moves_without_apple > moves_to_lose:
             starving = True
-         
+
          if collision:
             collided = check_collision(snake, grid_size)
 
@@ -557,7 +594,6 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
          # continue loop
          if does_get_apple:
             apple = generate_new_apple(snake, gridpoints)
-
 
    except KeyboardInterrupt:
       pass
@@ -573,15 +609,27 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
 if __name__ == "__main__":
    net = SnakeNet()
    net.load_weights('./my_model/best_weights.json')
-   score, moves, avg_moves_to_get_apple = play(
-   display=True, 
-   step_time=0.05, 
-   moves_to_lose=100,
-   collision=True,
-   net=net,
-   register_moves=False
-   )
+   
+   scores = []
+   for i in range(10):
 
-   print(score, moves, avg_moves_to_get_apple)
+      score, moves, avg_moves_to_get_apple = play(
+         display=True,
+         step_time=0.1,
+         moves_to_lose=50,
+         collision=True,
+         net=net,
+         register_moves=False
+      )
+
+      scores.append(score)
+
+   import matplotlib.pyplot as plt
+
+   plt.hist(scores)
+   plt.show()
+
+   # print(score, moves, avg_moves_to_get_apple)
+   # print()
 
 
