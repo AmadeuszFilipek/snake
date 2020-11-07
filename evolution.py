@@ -16,9 +16,11 @@ Bounds = namedtuple('Bounds', ['min', 'max'])
 Bin = namedtuple('Bin', ['min', 'max'])
 Individual = namedtuple('Individual', ['gene', 'cost'])
 
-PARENT_RATE = 0.5
+PARENT_RATE = 0.2
+SPECIMEN_MUTATES_PROBABILITY = 1
+MUTATION_PROBABILITY = 0.01
 
-# MUTATIONS_PER_SPECIMEN = 1
+# MUTATIONS_PER_SPECIMEN = 10
 # BINARY_RESOLUTION = 5
 
 FLIP_BIT = {'0': '1', '1': '0'}
@@ -160,12 +162,9 @@ def evaluate_fitness(target, population, workers):
 
    genes = list(gene_iterator(population))
    rng.shuffle(genes)
-   # chunk_size = int(len(genes) / workers)
-   # gene_chunks = [genes[i:i + chunk_size] for i in range(0, len(genes), chunk_size)]
 
    if workers > 1:
       with Pool(processes=workers,  maxtasksperchild=50) as pool:
-         # results = [pool.apply(wrapper, (target, gene_chunk, net)) for gene_chunk, net in zip(gene_chunks, nets)]
          results = pool.map(target, genes)
    else:
       results = [target(g) for g in genes]
@@ -177,7 +176,7 @@ def evaluate_fitness(target, population, workers):
 
    return updated_population
 
-def apply_constraints(genome, bounds):
+def clip(genome, bounds):
    if genome > bounds.max:
       return bounds.max
    elif genome < bounds.min:
@@ -185,22 +184,38 @@ def apply_constraints(genome, bounds):
    else:
       return genome
 
+def apply_constraints(population, bounds):
+   clipped_population = []
+
+   for gene in gene_iterator(population):
+      clipped_gene = [clip(g, bounds) for g in gene]
+      clipped_specimen = Individual(gene=clipped_gene, cost=np.inf)
+      clipped_population.append(clipped_specimen)
+   
+   return clipped_population
+
 def mutate(population, bounds, mutation_probability, mutation_operators):
    mutated_population = []
 
    for specimen in population:
 
+      # mutations = 0
       mutated_gene = []
 
-      for genome in specimen.gene:
-         mutated_genome = genome
-         is_mutated = rng.random() < mutation_probability
-         if (is_mutated):
-            mutation_operator = rng.choice(mutation_operators)
-            mutated_genome = mutation_operator(genome)
-            mutated_genome = apply_constraints(genome, bounds)
-         mutated_gene.append(mutated_genome)
+      specimen_mutates = rng.random() < SPECIMEN_MUTATES_PROBABILITY
 
+      if (specimen_mutates):
+         for genome in specimen.gene:
+            mutated_genome = genome
+            is_mutated = rng.random() < mutation_probability
+            if (is_mutated):# and mutations < MUTATIONS_PER_SPECIMEN):
+               # mutations += 1
+               mutation_operator = rng.choice(mutation_operators)
+               mutated_genome = mutation_operator(mutated_genome)
+            mutated_gene.append(mutated_genome)
+      else:
+         mutated_gene = specimen.gene
+      
       mutant = Individual(gene=mutated_gene, cost=np.inf)
       mutated_population.append(mutant)
    
@@ -298,62 +313,65 @@ def evolution_optimise(
    if should_load_population:
       population = load_population(load_directory)
    else:
+      # population = [generate_individual(dimensions, Bounds(min=0, max=0)) for _ in range(population_size)]
       population = [generate_individual(dimensions, bounds) for _ in range(population_size)]
 
    best_individual = population[0]
    generation_best_individual = population[0]
    children = population
    parents = []
-   progres_stagnation = 0
-   mutation_probability = 0.05
+   # progres_stagnation = 0 #AF: wtf is this
 
    # main generation loop
    for gen in range(generations):
+      try:
+         # evaluate fitness
+         children = evaluate_fitness(target, children, workers)
+         population = children + parents
 
-      # evaluate fitness
-      population = evaluate_fitness(target, population, workers)
+         # find the best one
+         generation_avg_result = 0
+         for p in population:
+            generation_avg_result += p.cost
+            if p.cost < best_individual.cost:
+               best_individual = Individual(gene=p.gene.copy(), cost=p.cost)
+         generation_avg_result = generation_avg_result / population_size
 
-      # find the best one
-      generation_avg_result = 0
-      for p in population:
-         generation_avg_result += p.cost
-         if p.cost < best_individual.cost:
-            best_gene = p.gene.copy()
-            best_individual = Individual(gene=best_gene, cost=p.cost)
-      generation_avg_result = generation_avg_result / population_size
+         # compare this generation to previous
+         new_gen_best = min(population, key=lambda p: p.cost)
+         was_there_any_progress = False
+         if new_gen_best.cost < generation_best_individual.cost:
+            was_there_any_progress = True
+         generation_best_individual = new_gen_best
 
-      # compare this generation to previous
-      new_gen_best = min(population, key=lambda p: p.cost)
-      was_there_any_progress = False
-      if new_gen_best.cost < generation_best_individual.cost:
-         was_there_any_progress = True
-      generation_best_individual = new_gen_best
-
-      # display the results
-      if display:
-         print("Generation {}/{}:  avg cost: {:.2e} gen best: {:.2e} global best cost: {:.2e}".format(
-            gen, generations, generation_avg_result, generation_best_individual.cost, best_individual.cost))
-
-      # log the results
-      # log_results(population, gen)
-
-      # save the population
-      if should_save_population:
-         save_population(population, save_directory)
-
-      # check timer conditions
-      clock = time.time()
-      elapsed_seconds = clock - clock_start 
-      if (allowed_seconds is not None) and elapsed_seconds > allowed_seconds:
+         # display the results
          if display:
-            print("Evolution loop ran out of time. Finishing optimisation. Total runtime: {}".format(elapsed_seconds))
-         break
+            print("Generation {}/{}:  avg cost: {:.2e} gen best: {:.2e} global best cost: {:.2e}".format(
+               gen, generations, generation_avg_result, generation_best_individual.cost, best_individual.cost))
 
-      # construct new population
-      parents = select_mating_pool(population, parent_pool_size)
-      children = crossover(parents, offspring_size, crossover_operators)
-      children = mutate(children, bounds, mutation_probability, mutation_operators)
-      population = parents + children
+         # log the results
+         # log_results(population, gen)
+
+         # save the population
+         if should_save_population:
+            save_population(population, save_directory)
+
+         # check timer conditions
+         clock = time.time()
+         elapsed_seconds = clock - clock_start 
+         if (allowed_seconds is not None) and elapsed_seconds > allowed_seconds:
+            if display:
+               print("Evolution loop ran out of time. Finishing optimisation. Total runtime: {}".format(elapsed_seconds))
+            break
+
+         # construct new population
+         parents = select_mating_pool(population, parent_pool_size)
+         children = crossover(parents, offspring_size, crossover_operators)
+         children = mutate(children, bounds, MUTATION_PROBABILITY, mutation_operators)
+         children = apply_constraints(children, bounds)
+
+      except KeyboardInterrupt:
+         return best_individual
 
    return best_individual
 
