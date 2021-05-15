@@ -17,7 +17,7 @@ def target_function(parameters):
    net.apply_parameters(parameters)
    points = []
    moves = []
-   tries = 100
+   tries = 20 # or even more ?
 
    for t in range(tries):
       pts, mvs, avg_moves = play(
@@ -39,14 +39,14 @@ def target_function(parameters):
 
 def cost_function(points, moves):
    # minus sign for minimization
-   # result = - (moves + 2 ** points + (points ** 2.1) * 500 + (((0.25 * moves) ** 1.3) * (points ** 1.2)))
+   result = moves + 2 ** points + (points ** 2.1) * 500 - (((0.25 * moves) ** 1.3) * (points ** 1.2))
+   return -1 * result
    # result = - points * points * math.exp(points) \
    #          - moves + points * math.sqrt(moves)
-   result = - math.exp(points) # lets just see points, roulette wont be so hard on priority
+   # result = - math.exp(points) # lets just see points, roulette wont be so hard on priority
    # result = - points
    # result = - moves - points ** points + math.sqrt(moves) * math.sqrt(points)
    # result = - math.pow(result, 2)
-   return result
 
 if __name__ == "__main__":
    mp.set_start_method('spawn', force=True)
@@ -55,12 +55,12 @@ if __name__ == "__main__":
    dimensions = net.total_parameters()
 
    crossover_operators = [
+      xso.single_point_crossover(),
       xso.gamma_weighted_crossover(tau=100),
-      xso.neural_crossover(net_shape),
+      # xso.neural_crossover(net_shape),
       # xso.identity_crossover(),
       # xso.neural_layer_crossover(net_shape),
       # xso.average_crossover(ratio=0.9),
-      # xso.single_point_crossover(),
       # xso.average_crossover(ratio=0.01),
       # xso.shuffle_crossover(mixing_rate=0.5),
       # xso.shuffle_crossover(mixing_rate=0.5),
@@ -68,15 +68,15 @@ if __name__ == "__main__":
 
    mutation_operators = [
       mo.gauss_mutate(mu=0, sigma=0.2),
-      # mo.identity_mutate(),
-      # mo.gauss_rate_mutate(0.01),
-      # mo.null_mutate()
-      # mo.gauss_mutate(mu=0, sigma=0.2),
-      # mo.gauss_mutate(mu=0, sigma=0.2),
-      # mo.gauss_mutate(mu=0, sigma=0.1),
-      # mo.gauss_mutate(mu=0, sigma=0.1),
       # mo.univariate_mutate(mu=0, sigma=1),
+      # mo.gauss_rate_mutate(0.1),
       # mo.spike_mutate(bounds=Bounds(min=-1, max=1)),
+      # mo.null_mutate(),
+      # mo.identity_mutate(),
+      # mo.gauss_mutate(mu=0, sigma=0.2),
+      # mo.gauss_mutate(mu=0, sigma=0.2),
+      # mo.gauss_mutate(mu=0, sigma=0.1),
+      # mo.gauss_mutate(mu=0, sigma=0.1),
       # mo.negate_mutate(),
    ]
    
@@ -85,13 +85,13 @@ if __name__ == "__main__":
       dimensions,
       crossover_operators=crossover_operators,
       mutation_operators=mutation_operators,
-      population_size=1000,
-      generations=100,
-      should_load_population=True,
-      load_directory='population_2020_11_07', #'population_2020_11_03', # #'big_population_2',
+      population_size=200,
+      generations=500,
+      should_load_population=False,
+      load_directory='population_2021_01_09',
       should_save_population=True,
-      save_directory='population_2020_11_07',
-      workers=16,
+      save_directory='population_2021_01_09',
+      workers=15,
       allowed_seconds= 60 * 60 * 8
    )
 

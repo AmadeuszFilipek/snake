@@ -7,7 +7,7 @@ import code
 Individual = namedtuple('Individual', ['gene', 'cost'])
 Bounds = namedtuple('Bounds', ['min', 'max'])
 
-def gamma_weighted_crossover(tau=10):
+def gamma_weighted_crossover(tau=100):
    ''' gamma parameter is randomly generated (0, 1) for each genome '''
 
    def lambda_gamma_weighted_crossover(father, mother):
@@ -16,11 +16,11 @@ def gamma_weighted_crossover(tau=10):
 
       for f_genome, m_genome in zip(father.gene, mother.gene):
 
-         gamma = rng.random()
-         if gamma < 0.5:
-            gamma = (2 * gamma) ** (1 / (tau + 1))
+         random = rng.random()
+         if random < 0.5:
+            gamma = (2 * random) ** (1 / (tau + 1))
          else:
-            gamma = (1 / (2 * (1 - gamma))) ** (1 / (tau + 1))
+            gamma = (1 / (2 * (1 - random))) ** (1 / (tau + 1))
 
          boy_genome  = 0.5 * ((1 + gamma) * f_genome + (1 - gamma) * m_genome)
          girl_genome = 0.5 * ((1 - gamma) * f_genome + (1 + gamma) * m_genome)

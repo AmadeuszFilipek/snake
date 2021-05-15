@@ -22,6 +22,7 @@ def softmax(x):
 
 def flatten_shaped_parameters(shaped_parameters):
    ''' return flattened and appended list of parameters '''
+   raise DeprecationWarning
    flattened_weights = []
       
    for layer in shaped_parameters:
@@ -30,6 +31,7 @@ def flatten_shaped_parameters(shaped_parameters):
    return flattened_weights
 
 def shape_parameters(shapes, parameters):
+   raise DeprecationWarning
    ''' return parameters shaped accordingly as numpy arrays'''
    total = total_parameters(shapes)
    if len(parameters) < total:
@@ -64,14 +66,14 @@ class SnakeNet:
 
       self.layers = [layer_1, layer_2, output_layer]
 
-   def predict(self, x):
+   def _predict(self, x):
       propagated_signal = x
 
       for layer in self.layers:
          weights_matrix = layer['weights']
          bias_vector = layer['bias']
          activation_function = NAME_TO_FUNCTION[layer['activation']]
-         aggregated_signal = np.sum(propagated_signal * weights_matrix.T, axis=1) + bias_vector
+         aggregated_signal = np.dot(propagated_signal, weights_matrix) + bias_vector
          propagated_signal = activation_function(aggregated_signal)
 
       return propagated_signal
@@ -81,17 +83,17 @@ class SnakeNet:
          path_obj = pathlib.Path(path)
          path_obj.parent.mkdir(parents=True, exist_ok=True)
       with open(path, 'w+') as file:
-         data = json.dump(self.get_flat_weights(), file)
+         json.dump(self.get_weights(), file)
 
    def load_weights(self, path):
       if not os.path.exists(path):
          raise ValueError("Path does not exist")
       with open(path, 'r') as file:
          data = json.load(file)
-      self.apply_parameters(data)
+      self.set_weights(data)
 
    def predict_next_move(self, features):
-      result = self.predict(np.array(features))
+      result = self._predict(np.array(features))
       return result.tolist()
 
    def get_model_weight_shapes(self):
@@ -105,24 +107,24 @@ class SnakeNet:
 
    def set_weights(self, weights_table):
       for layer, (weights, bias) in zip(self.layers, alternate(weights_table)):
-         layer['weights'] = weights
-         layer['bias'] = bias
+         layer['weights'] = np.array(weights)
+         layer['bias'] = np.array(bias)
 
-   def get_flat_weights(self):
-      flattened_weights = []
+   def get_weights(self):
+      weights = []
       
       for layer in self.layers:
-         weights = layer['weights']
-         bias = layer['bias']
-         flattened_weights += (weights.flatten().tolist())
-         flattened_weights += (bias.flatten().tolist())
+         layer_weight = layer['weights']
+         layer_bias = layer['bias']
+         weights.append(layer_weight.tolist())
+         weights.append(layer_bias.tolist())
 
-      return flattened_weights
+      return weights
 
-   def apply_parameters(self, parameters):
-      shapes = self.get_model_weight_shapes()
-      weights = shape_parameters(shapes, parameters)
-      self.set_weights(weights)
+   # def apply_parameters(self, parameters):
+   #    shapes = self.get_model_weight_shapes()
+   #    weights = shape_parameters(shapes, parameters)
+   #    self.set_weights(weights)
 
    def total_parameters(self):
       return total_parameters(self.get_model_weight_shapes())

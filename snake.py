@@ -7,9 +7,10 @@ from math import sqrt
 import numpy as np
 import json
 
-from pynput.keyboard import Key, Listener
+# from pynput.keyboard import Key, Listener
 
 from neural_net import SnakeNet
+import probabilistic_model
 
 Point = namedtuple('Point', ['x', 'y'])
 
@@ -175,6 +176,7 @@ def get_snake_to_wall_distance(snake, grid_size, binary=False):
 
    label = [d_to_north, d_to_ne, d_to_east, d_to_es, d_to_south, d_to_sw, d_to_west, d_to_wn]
 
+   # unused
    if binary:
       label = list(map(lambda d: 1 if d == 1 else 0, label))
 
@@ -325,26 +327,8 @@ def generate_new_apple(snake, gridpoints):
    possibilities = gridpoints.difference(set(snake))
    if len(possibilities) == 0:
       return None
-   new_apple_position = rnd.sample(possibilities, 1)
-
-   # calculate difficulty for apple collection
-   # difficulty = {}
-   # snake_head = snake[-1]
-   # for possibility in possibilities:
-   #    dx = abs(snake_head.x - possibility.x)
-   #    dy = abs(snake_head.y - possibility.y)
-   #    d = sqrt(dx ** 2 + dy ** 2)
-   #    difficulty[possibility] = d
-
-   # distribution = sum(difficulty.values())
-   # shot = rnd.random() * distribution
-   # plate = 0
-   # for possibility in possibilities:
-   #    plate += difficulty[possibility]
-   #    if plate >= shot:
-   #       return possibility
-
-   return new_apple_position[0]
+   new_apple_position = rnd.choice(list(possibilities))
+   return new_apple_position
 
 def advance(snake, direction, apple):
    
@@ -471,7 +455,7 @@ def move_point(point, direction):
    elif direction == 'right':
       return Point(x=point.x, y=point.y + 1)
    elif direction == 'down':
-      return Point(x=point.x + 1,y=point.y)
+      return Point(x=point.x + 1, y=point.y)
    
    raise ValueError("move_point: Invalid direction {}".format(direction))
 
@@ -537,11 +521,11 @@ def get_possible_moves(snake, grid_size):
    
    return possible_moves
 
-def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=SnakeNet(), register_moves=False):
-   grid_size = 6
+def play(display=True, step_time=0.01, moves_to_lose=100, collision=True, net=SnakeNet(), register_moves=False):
+   grid_size = 10
    grid = initialize_grid(grid_size=grid_size)
    gridpoints = construct_gridpoints(grid_size)
-   snake, direction = generate_snake(2, grid_size)
+   snake, direction = generate_snake(3, grid_size)
    apple = generate_new_apple(snake, gridpoints)
    moves_to_lose = grid_size * grid_size
 
@@ -569,8 +553,10 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
          # input_direction = input('->')
          # new_direction = {'a':'left', 'w':'up', 's':'down', 'd':'right'}[input_direction]
 
-         new_direction = net_predict_next_direction(net, features)
-         direction = validate_direction(direction, new_direction)
+         # new_direction = net_predict_next_direction(net, features)
+         direction = input(">>>")
+         
+         # direction = validate_direction(direction, new_direction)
          does_get_apple = advance(snake, direction, apple)
 
          moves += 1
@@ -607,29 +593,13 @@ def play(display=True, step_time=0.01, moves_to_lose=50, collision=True, net=Sna
 
 
 if __name__ == "__main__":
-   net = SnakeNet()
-   net.load_weights('./my_model/best_weights.json')
-   
-   scores = []
-   for i in range(10):
+   # net = SnakeNet()
+   # net.load_weights('./my_model/best_weights.json')
+   # probabilistic_model.load_database('./2020_12_25/pdbase.json')
 
-      score, moves, avg_moves_to_get_apple = play(
+   score, moves, avg_moves_to_get_apple = play(
          display=True,
          step_time=0.1,
          moves_to_lose=50,
-         collision=True,
-         net=net,
-         register_moves=False
+         collision=True
       )
-
-      scores.append(score)
-
-   import matplotlib.pyplot as plt
-
-   plt.hist(scores)
-   plt.show()
-
-   # print(score, moves, avg_moves_to_get_apple)
-   # print()
-
-
