@@ -15,9 +15,9 @@ def gamma_weighted_crossover(tau=100):
       boy_gene = np.empty(shape)
       girl_gene = np.empty(shape)
 
-      random_table = np.random.random(parent1.shape)
+      random_table = np.random.random(shape)
       truth_table = random_table <= 0.5
-      false_table = random_table == False
+      false_table = truth_table == False
       gamma = np.empty(shape)
       gamma[truth_table] = (2 * random_table[truth_table]) ** (1 / (tau + 1))
       gamma[false_table] = (1 / (2 * (1 - random_table[false_table]))) ** (1 / (tau + 1))
@@ -96,26 +96,26 @@ def single_point_crossover():
       girl_gene = mother_gene.copy()
 
       rows, cols = father_gene.shape
-      crosspoint = rng.randint(0, rows)
+      cross_row = np.random.randint(0, rows)
+      cross_col = np.random.randint(0, cols)
 
-      boy_gene[crosspoint:] = mother_gene[crosspoint:]
-      girl_gene[crosspoint:] =father_gene[crosspoint:]
+      boy_gene[:cross_row, :] = mother_gene[:cross_row, :]
+      boy_gene[cross_row, :cross_col+1] = mother_gene[cross_row, :cross_col+1]
+
+      girl_gene[:cross_row, :] = father_gene[:cross_row, :]
+      girl_gene[cross_row, :cross_col+1] = father_gene[cross_row, :cross_col+1]
 
       return boy_gene, girl_gene
 
    return lambda_single_point_crossover
 
 def identity_crossover():
-   raise DeprecationWarning
    ''' resultant genes are exact copy of input genes
    '''
 
-   def lambda_identity_crossover(father, mother):
+   def lambda_identity_crossover(father_gene, mother_gene):
 
-      boy = Individual(gene=father.gene, cost=np.inf)
-      girl = Individual(gene=mother.gene, cost=np.inf)
-
-      return boy, girl
+      return father_gene, mother_gene
 
    return lambda_identity_crossover
 
