@@ -14,28 +14,19 @@ from neural_net import SnakeNet
 def target_function(parameters):
 
    net = SnakeNet()
-   net.apply_parameters(parameters)
-   points = []
-   moves = []
-   tries = 20 # or even more ?
+   net.set_weights(parameters)
 
-   for t in range(tries):
-      pts, mvs, avg_moves = play(
+   pts, mvs, avg_moves = play(
          display=False,
          # step_time=0.1,
          collision=True,
          moves_to_lose=100,
          net=net
-         )
-      points.append(pts)
-      moves.append(mvs)
-   
-   avg_points = sum(points) / len(points)
-   avg_moves = sum(moves) / len(moves)
-   
+   )
+
    cost = cost_function(avg_points, avg_moves)
 
-   return cost
+   return cost, pts
 
 def cost_function(points, moves):
    # minus sign for minimization

@@ -10,32 +10,27 @@ Bounds = namedtuple('Bounds', ['min', 'max'])
 def gamma_weighted_crossover(tau=100):
    ''' gamma parameter is randomly generated (0, 1) for each genome '''
 
-   def lambda_gamma_weighted_crossover(father, mother):
-      boy_gene = []
-      girl_gene = []
+   def lambda_gamma_weighted_crossover(father_gene, mother_gene):
+      shape = father_gene.shape
+      boy_gene = np.empty(shape)
+      girl_gene = np.empty(shape)
 
-      for f_genome, m_genome in zip(father.gene, mother.gene):
+      random_table = np.random.random(parent1.shape)
+      truth_table = random_table <= 0.5
+      false_table = random_table == False
+      gamma = np.empty(shape)
+      gamma[truth_table] = (2 * random_table[truth_table]) ** (1 / (tau + 1))
+      gamma[false_table] = (1 / (2 * (1 - random_table[false_table]))) ** (1 / (tau + 1))
 
-         random = rng.random()
-         if random < 0.5:
-            gamma = (2 * random) ** (1 / (tau + 1))
-         else:
-            gamma = (1 / (2 * (1 - random))) ** (1 / (tau + 1))
+      boy_gene  = 0.5 * ((1 + gamma) * father_gene + (1 - gamma) * mother_gene)
+      girl_gene = 0.5 * ((1 - gamma) * father_gene + (1 + gamma) * mother_gene)
 
-         boy_genome  = 0.5 * ((1 + gamma) * f_genome + (1 - gamma) * m_genome)
-         girl_genome = 0.5 * ((1 - gamma) * f_genome + (1 + gamma) * m_genome)
-
-         boy_gene.append(boy_genome)
-         girl_gene.append(girl_genome)
-      
-      boy = Individual(gene=boy_gene, cost=0)
-      girl = Individual(gene=girl_gene, cost=0)
-
-      return boy, girl
+      return boy_gene, girl_gene
 
    return lambda_gamma_weighted_crossover
 
 def shuffle_crossover(mixing_rate=0.5):
+   raise DeprecationWarning
    ''' each child gets some father and some mother genes '''
    if mixing_rate < 0 or mixing_rate > 1:
       raise ValueError()
@@ -66,6 +61,7 @@ def shuffle_crossover(mixing_rate=0.5):
    return lambda_shuffle_crossover
 
 def average_crossover(ratio=0.5):
+   raise DeprecationWarning
    ''' averages the genes from both parens using ratio '''
 
    if ratio < 0 or ratio > 1:
@@ -95,20 +91,22 @@ def single_point_crossover():
        cut them at random point and glue the parts together
    '''
 
-   def lambda_single_point_crossover(father, mother):
-      crosspoint = rng.choice(range(len(father.gene)))
-      
-      boy_gene = father.gene[:crosspoint] + mother.gene[crosspoint:]
-      girl_gene = mother.gene[:crosspoint] + father.gene[crosspoint:]
+   def lambda_single_point_crossover(father_gene, mother_gene):
+      boy_gene = father_gene.copy()
+      girl_gene = mother_gene.copy()
 
-      boy = Individual(gene=boy_gene, cost=np.inf)
-      girl = Individual(gene=girl_gene, cost=np.inf)
+      rows, cols = father_gene.shape
+      crosspoint = rng.randint(0, rows)
 
-      return boy, girl
+      boy_gene[crosspoint:] = mother_gene[crosspoint:]
+      girl_gene[crosspoint:] =father_gene[crosspoint:]
+
+      return boy_gene, girl_gene
 
    return lambda_single_point_crossover
 
 def identity_crossover():
+   raise DeprecationWarning
    ''' resultant genes are exact copy of input genes
    '''
 
@@ -122,6 +120,7 @@ def identity_crossover():
    return lambda_identity_crossover
 
 def neural_crossover(shapes):
+   raise DeprecationWarning
    ''' cut each layer+bias neuron-wise and glue parts from parents
        shapes - shape of neural net structure
    '''
@@ -179,6 +178,7 @@ def neural_crossover(shapes):
    return lambda_neural_crossover
 
 def neural_layer_crossover(shapes):
+   raise DeprecationWarning
    ''' cut networks by their layers and glue the layers back toghether
    '''
 

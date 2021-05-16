@@ -83,7 +83,7 @@ class SnakeNet:
          path_obj = pathlib.Path(path)
          path_obj.parent.mkdir(parents=True, exist_ok=True)
       with open(path, 'w+') as file:
-         json.dump(self.get_weights(), file)
+         json.dump(self.get_weights(as_list=True), file)
 
    def load_weights(self, path):
       if not os.path.exists(path):
@@ -110,21 +110,20 @@ class SnakeNet:
          layer['weights'] = np.array(weights)
          layer['bias'] = np.array(bias)
 
-   def get_weights(self):
+   def get_weights(self, as_list=False):
       weights = []
       
       for layer in self.layers:
          layer_weight = layer['weights']
          layer_bias = layer['bias']
-         weights.append(layer_weight.tolist())
-         weights.append(layer_bias.tolist())
+         if as_list:
+            weights.append(layer_weight.tolist())
+            weights.append(layer_bias.tolist())
+         else:
+            weights.append(layer_weight)
+            weights.append(layer_bias)
 
       return weights
-
-   # def apply_parameters(self, parameters):
-   #    shapes = self.get_model_weight_shapes()
-   #    weights = shape_parameters(shapes, parameters)
-   #    self.set_weights(weights)
 
    def total_parameters(self):
       return total_parameters(self.get_model_weight_shapes())

@@ -11,16 +11,13 @@ def identity_mutate():
    return lambda_identity_mutate
 
 def gauss_mutate(mu=0, sigma=1):
-   def lambda_gauss_mutate(genome):
-
-      mutated_genome = genome
-      mutagen = rng.normalvariate(mu=mu, sigma=sigma)
-      mutated_genome += mutagen
-
-      return mutated_genome
+   def lambda_gauss_mutate(gene):
+      mutagen = np.random.normal(loc=mu, scale=sigma, gene.shape)
+      return gene + mutagen
    return lambda_gauss_mutate
 
 def gauss_rate_mutate(mu=0, sigma=1):
+   raise DeprecationWarning
    def lambda_gauss_rate_mutate(genome):
 
       mutated_genome = genome
@@ -31,6 +28,7 @@ def gauss_rate_mutate(mu=0, sigma=1):
    return lambda_gauss_rate_mutate
 
 def negate_mutate():
+   raise DeprecationWarning
    def lambda_negate_mutate(genome):
 
       mutated_genome = genome
@@ -40,6 +38,7 @@ def negate_mutate():
    return lambda_negate_mutate
 
 def univariate_mutate(mu=0, sigma=1):
+   raise DeprecationWarning
    def lambda_univariate_mutate(genome):
 
       mutated_genome = genome
@@ -50,6 +49,7 @@ def univariate_mutate(mu=0, sigma=1):
    return lambda_univariate_mutate
 
 def spike_mutate(bounds=Bounds(min=-1,max=1)):
+   raise DeprecationWarning
    def lambda_spike_mutate(genome):
 
       mutated_genome = genome
@@ -60,6 +60,7 @@ def spike_mutate(bounds=Bounds(min=-1,max=1)):
    return lambda_spike_mutate
 
 def null_mutate(bounds=Bounds(min=-1,max=1)):
+   raise DeprecationWarning
    def lambda_null_mutate(genome):
 
       mutated_genome = genome
