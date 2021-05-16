@@ -107,16 +107,6 @@ def evaluate_fitness(target, population, workers):
 
    return updated_population
 
-def clip(genome, bounds):
-   raise DeprecationWarning
-   # AF: update implementation
-   if genome > bounds.max:
-      return bounds.max
-   elif genome < bounds.min:
-      return bounds.min
-   else:
-      return genome
-
 def apply_constraints(population, bounds):
    clipped_population = []
 
