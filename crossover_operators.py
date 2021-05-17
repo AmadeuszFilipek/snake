@@ -98,10 +98,10 @@ def single_point_crossover():
       cross_col = np.random.randint(0, cols)
 
       boy_gene[:cross_row, :] = mother_gene[:cross_row, :]
-      # boy_gene[cross_row, :cross_col+1] = mother_gene[cross_row, :cross_col+1]
+      boy_gene[cross_row, :cross_col+1] = mother_gene[cross_row, :cross_col+1]
 
       girl_gene[:cross_row, :] = father_gene[:cross_row, :]
-      # girl_gene[cross_row, :cross_col+1] = father_gene[cross_row, :cross_col+1]
+      girl_gene[cross_row, :cross_col+1] = father_gene[cross_row, :cross_col+1]
 
       return boy_gene, girl_gene
 

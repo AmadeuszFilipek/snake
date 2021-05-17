@@ -19,7 +19,7 @@ def target_function(parameters):
    points, moves, avg_moves = play(
          display=False,
          collision=True,
-         moves_to_lose=100,
+         moves_to_lose=50,
          net=net
    )
 
