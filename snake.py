@@ -567,11 +567,11 @@ def play(display=True, step_time=0.01, moves_to_lose=100, collision=True, net=Sn
 
          features = construct_feature_array(direction, snake, apple, grid_size)
 
-         input_direction = input('->')
-         direction = {'a':'left', 'w':'up', 's':'down', 'd':'right'}[input_direction]
+         # input_direction = input('->')
+         # direction = {'a':'left', 'w':'up', 's':'down', 'd':'right'}[input_direction]
          # direction = input(">>>")
          # direction = validate_direction(direction, new_direction)
-         # direction = net_predict_next_direction(net, features)
+         direction = net_predict_next_direction(net, features)
          does_get_apple = advance(snake, direction, apple)
 
          moves += 1

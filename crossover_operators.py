@@ -12,8 +12,6 @@ def gamma_weighted_crossover(tau=100):
 
    def lambda_gamma_weighted_crossover(father_gene, mother_gene):
       shape = father_gene.shape
-      boy_gene = np.empty(shape)
-      girl_gene = np.empty(shape)
 
       random_table = np.random.random(shape)
       truth_table = random_table <= 0.5
@@ -92,18 +90,18 @@ def single_point_crossover():
    '''
 
    def lambda_single_point_crossover(father_gene, mother_gene):
+      rows, cols = father_gene.shape
       boy_gene = father_gene.copy()
       girl_gene = mother_gene.copy()
 
-      rows, cols = father_gene.shape
       cross_row = np.random.randint(0, rows)
       cross_col = np.random.randint(0, cols)
 
       boy_gene[:cross_row, :] = mother_gene[:cross_row, :]
-      boy_gene[cross_row, :cross_col+1] = mother_gene[cross_row, :cross_col+1]
+      # boy_gene[cross_row, :cross_col+1] = mother_gene[cross_row, :cross_col+1]
 
       girl_gene[:cross_row, :] = father_gene[:cross_row, :]
-      girl_gene[cross_row, :cross_col+1] = father_gene[cross_row, :cross_col+1]
+      # girl_gene[cross_row, :cross_col+1] = father_gene[cross_row, :cross_col+1]
 
       return boy_gene, girl_gene
 

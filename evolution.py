@@ -257,6 +257,7 @@ def evolution_optimise(
 
          # construct new population
          parents = select_mating_pool(population, parent_pool_size)
+         rng.shuffle(parents)
          children = crossover(parents, offspring_size, crossover_operators)
          children = mutate(children, MUTATION_PROBABILITY, mutation_operators)
          children = apply_constraints(children, bounds)

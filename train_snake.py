@@ -23,14 +23,14 @@ def target_function(parameters):
          net=net
    )
 
-   cost = fitness(points, moves)
+   fit = fitness(points, moves)
 
-   return cost, points
+   return fit, points
 
 def fitness(points, moves):
    # minus sign for minimization
    result = moves + 2 ** points + (points ** 2.1) * 500 - (((0.25 * moves) ** 1.3) * (points ** 1.2))
-   return min(result, 0)
+   return max(result, 0.1)
    # result = - points * points * math.exp(points) \
    #          - moves + points * math.sqrt(moves)
    # result = - math.exp(points) # lets just see points, roulette wont be so hard on priority
@@ -70,9 +70,9 @@ if __name__ == "__main__":
       allowed_seconds= 60 * 60 * 1
    )
 
-   cost, pos = best_snake.cost, best_snake.gene
+   fitness, pos = best_snake.fitness, best_snake.gene
 
-   print("BEST COST: {}".format(cost))
+   print("BEST COST: {}".format(fitness))
    net.set_weights(pos)
    net.save_weights('./my_model/best_weights.json')
 
