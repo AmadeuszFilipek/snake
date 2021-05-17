@@ -154,9 +154,9 @@ def load_population(load_directory):
             continue
          gene = []
          for weight, bias in alternate(data):
-            gene.append(np.array(weight))
-            gene.append(np.array(bias))
-      specimen = Individual(gene=data, fitness=0, score=0)
+            gene.append(np.array(np.array(weight)))
+            gene.append(np.array(np.array(bias)))
+      specimen = Individual(gene=gene, fitness=0, score=0)
       population.append(specimen)
    
    return population
@@ -266,7 +266,7 @@ def evolution_optimise(
 
          # save the population
          if should_save_population:
-            save_population(children, save_directory)
+            save_population(population, save_directory)
 
 
       except KeyboardInterrupt:
