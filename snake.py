@@ -12,6 +12,9 @@ import json
 from neural_net import SnakeNet
 import probabilistic_model
 
+# rnd.seed(1) # freeze seed globally
+# np.random.seed(1)
+
 Point = namedtuple('Point', ['x', 'y'])
 
 DIRECTIONS = ['left', 'up', 'right', 'down']
@@ -242,6 +245,7 @@ def construct_feature_array(direction, snake, apple, grid_size):
    # print('head direction')
    # print(hot_encode_direction(direction))
 
+   # print(features)
    return features
 
 def net_predict_next_move(direction, snake, apple, grid):
@@ -402,6 +406,19 @@ def generate_snake(length, grid_size):
 
    return snake, direction
 
+def alernative_snake_generate(length, grid_size):
+   snake = deque()
+   x = rnd.randint(2, grid_size - 3)
+   y = rnd.randint(2, grid_size - 3)
+   head = Point(x=x, y=y)
+   snake.append(head)
+   direction = rnd.choice(DIRECTIONS)
+   orientation = DIRECTION_TO_ORIENTATION[direction]
+   vector = ORIENTATION_TO_POINT[orientation]
+   snake.append(Point(head.x + vector.x, head.y + vector.y))
+   snake.append(Point(head.x + 2 * vector.x, head.y + 2 * vector.y))
+   return snake, direction
+
 def validate_direction(last_direction, d):
    is_invalid_move = False
 
@@ -521,8 +538,8 @@ def get_possible_moves(snake, grid_size):
    
    return possible_moves
 
-def play(display=True, step_time=0.01, moves_to_lose=100, collision=True, net=SnakeNet(), register_moves=False):
-   grid_size = 10
+def play(display=True, step_time=0.01, moves_to_lose=100, collision=True, net=SnakeNet()):
+   grid_size = 6
    grid = initialize_grid(grid_size=grid_size)
    gridpoints = construct_gridpoints(grid_size)
    snake, direction = generate_snake(3, grid_size)
@@ -544,32 +561,23 @@ def play(display=True, step_time=0.01, moves_to_lose=100, collision=True, net=Sn
             update_grid(snake, grid, apple)
             print_grid(grid)
             sleep(step_time)
-         
+            print(points, moves)
          if apple is None:
             break # you won
 
          features = construct_feature_array(direction, snake, apple, grid_size)
 
-         # input_direction = input('->')
-         # new_direction = {'a':'left', 'w':'up', 's':'down', 'd':'right'}[input_direction]
-
-         # new_direction = net_predict_next_direction(net, features)
-         direction = input(">>>")
-         
+         input_direction = input('->')
+         direction = {'a':'left', 'w':'up', 's':'down', 'd':'right'}[input_direction]
+         # direction = input(">>>")
          # direction = validate_direction(direction, new_direction)
+         # direction = net_predict_next_direction(net, features)
          does_get_apple = advance(snake, direction, apple)
 
          moves += 1
-         moves_without_apple += 1
-
-         if does_get_apple:
-            points += 1
-            moves_to_get_apple.append(moves_without_apple)
-            moves_without_apple = 0
 
          # check end-game conditions
-         if moves_without_apple > moves_to_lose:
-            starving = True
+         starving = moves_without_apple > moves_to_lose
 
          if collision:
             collided = check_collision(snake, grid_size)
@@ -578,6 +586,13 @@ def play(display=True, step_time=0.01, moves_to_lose=100, collision=True, net=Sn
             break
 
          # continue loop
+         if does_get_apple:
+            points += 1
+            moves_to_get_apple.append(moves_without_apple)
+            moves_without_apple = 0
+         else:
+            moves_without_apple += 1
+
          if does_get_apple:
             apple = generate_new_apple(snake, gridpoints)
 

@@ -6,14 +6,14 @@ Individual = namedtuple('Individual', ['gene', 'cost'])
 Bounds = namedtuple('Bounds', ['min', 'max'])
 
 def identity_mutate():
-   def lambda_identity_mutate(genome):
-      return genome
+   def lambda_identity_mutate(gene):
+      return gene
    return lambda_identity_mutate
 
-def gauss_mutate(mu=0, sigma=1):
+def gauss_mutate(mu=0, scale=1):
    def lambda_gauss_mutate(gene):
-      mutagen = np.random.normal(loc=mu, scale=sigma, gene.shape)
-      return gene + mutagen
+      mutagen = np.random.normal(size=gene.shape)
+      return gene + mutagen * scale
    return lambda_gauss_mutate
 
 def gauss_rate_mutate(mu=0, sigma=1):

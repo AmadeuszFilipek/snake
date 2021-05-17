@@ -14,7 +14,7 @@ from neural_net import alternate
 
 Bounds = namedtuple('Bounds', ['min', 'max'])
 Bin = namedtuple('Bin', ['min', 'max'])
-Individual = namedtuple('Individual', ['gene', 'cost', 'score'])
+Individual = namedtuple('Individual', ['gene', 'fitness', 'score'])
 
 PARENT_RATE = 0.33
 MUTATION_PROBABILITY = 0.05
@@ -29,29 +29,29 @@ def generate_individual(shapes, bounds):
       random_table = span * np.random.random(shape) + bounds.min
       gene.append(random_table)
 
-   return Individual(gene=gene, cost=0, score=0)
+   return Individual(gene=gene, fitness=0, score=0)
 
 def gene_iterator(population):
    for p in population:
       yield p.gene
 
-def cost_iterator(population):
+def fitness_iterator(population):
    for p in population:
-      yield p.cost
+      yield p.fitness
 
 def roulette_choose(population):
-   wheel = sum(cost_iterator(population))
-   shot = rng.uniform(wheel, 0)
+   wheel = sum(fitness_iterator(population))
+   shot = rng.uniform(0, wheel)
    aggregate = 0
    for specimen in population:
-      aggregate += specimen.cost
-      if aggregate < shot:
+      aggregate += specimen.fitness
+      if aggregate > shot:
          return specimen
 
 def select_mating_pool(population, parents_pool_size):
    parents = []
    candidates = population.copy()
-   candidates.sort(key=lambda x: x.cost)
+   candidates.sort(key=lambda x: x.fitness, reverse=True)
    parents = candidates[:parents_pool_size]
 
    return parents
@@ -80,8 +80,8 @@ def crossover(parents, offspring_size, crossover_operators):
          girl_gene.append(girl_weight)
          girl_gene.append(girl_bias)
       
-      boy = Individual(gene=boy_gene, cost=0, score=0)
-      girl = Individual(gene=girl_gene, cost=0, score=0)
+      boy = Individual(gene=boy_gene, fitness=0, score=0)
+      girl = Individual(gene=girl_gene, fitness=0, score=0)
 
       children.append(boy)
       children.append(girl)
@@ -98,9 +98,9 @@ def evaluate_fitness(target, population, workers):
    else:
       results = [target(g) for g in genes]
 
-   # build new specimens with their cost
-   for (cost, points), specimen in zip(results, population):
-      new_specimen = Individual(gene=specimen.gene, cost=cost, score=points)
+   # build new specimens with their fitness
+   for (fitness, points), specimen in zip(results, population):
+      new_specimen = Individual(gene=specimen.gene, fitness=fitness, score=points)
       evaluated_population.append(new_specimen)
 
    return evaluated_population
@@ -110,12 +110,12 @@ def apply_constraints(population, bounds):
 
    for gene in gene_iterator(population):
       clipped_gene = [np.clip(g, bounds.min, bounds.max) for g in gene]
-      clipped_specimen = Individual(gene=clipped_gene, cost=0, score=0)
+      clipped_specimen = Individual(gene=clipped_gene, fitness=0, score=0)
       clipped_population.append(clipped_specimen)
    
    return clipped_population
 
-def mutate(population, bounds, mutation_probability, mutation_operators):
+def mutate(population, mutation_probability, mutation_operators):
    mutated_population = []
 
    for specimen in population:
@@ -134,7 +134,7 @@ def mutate(population, bounds, mutation_probability, mutation_operators):
          mutated_gene.append(mutated_weight)
          mutated_gene.append(mutated_bias)
 
-      mutant = Individual(gene=mutated_gene, cost=0, score=0)
+      mutant = Individual(gene=mutated_gene, fitness=0, score=0)
       mutated_population.append(mutant)
    
    return mutated_population
@@ -156,7 +156,7 @@ def load_population(load_directory):
          for weight, bias in alternate(data):
             gene.append(np.array(weight))
             gene.append(np.array(bias))
-      specimen = Individual(gene=data, cost=0, score=0)
+      specimen = Individual(gene=data, fitness=0, score=0)
       population.append(specimen)
    
    return population
@@ -212,8 +212,8 @@ def evolution_optimise(
    else:
       population = [generate_individual(shapes, bounds) for _ in range(population_size)]
 
-   best_individual = Individual(gene=np.array([]), cost=0, score=0)
-   generation_best_individual = Individual(gene=np.array([]), cost=0, score=0)
+   best_individual = Individual(gene=np.array([]), fitness=0, score=0)
+   generation_best_individual = Individual(gene=np.array([]), fitness=0, score=0)
 
    # main generation loop
    for gen in range(generations):
@@ -224,31 +224,28 @@ def evolution_optimise(
          # find the best one
          generation_avg_result = 0
          for p in population:
-            generation_avg_result += p.cost
-            if p.cost < best_individual.cost:
-               best_individual = Individual(gene=p.gene.copy(), cost=p.cost, score=p.score)
+            generation_avg_result += p.fitness
+            if p.fitness > best_individual.fitness:
+               best_individual = Individual(gene=p.gene.copy(), fitness=p.fitness, score=p.score)
          generation_avg_result = generation_avg_result / population_size
 
          # compare this generation to previous
-         new_gen_best = min(population, key=lambda p: p.cost)
-         was_there_any_progress = False
-         if new_gen_best.cost < generation_best_individual.cost:
-            was_there_any_progress = True
+         new_gen_best = max(population, key=lambda p: p.fitness)
          generation_best_individual = new_gen_best
 
          # display the results
          if display:
-            print("Generation {}/{}: best score: {:d} avg cost: {:.2f} gen best: {:.2f} global best cost: {:.2f}".format(
+            print("Generation {}/{}: best score: {:d} avg fitness: {:.2f} gen best: {:.2f} global best fitness: {:.2f}".format(
                gen,
                generations,
                generation_best_individual.score,
                generation_avg_result,
-               generation_best_individual.cost, 
-               best_individual.cost
+               generation_best_individual.fitness, 
+               best_individual.fitness
             ))
 
          # log the results
-         # log_results("{}, {}, {}, {}".format(gen, generation_best_individual.score, generation_avg_result, generation_best_individual.cost))
+         # log_results("{}, {}, {}, {}".format(gen, generation_best_individual.score, generation_avg_result, generation_best_individual.fitness))
 
          # check timer conditions
          clock = time.time()
@@ -261,7 +258,7 @@ def evolution_optimise(
          # construct new population
          parents = select_mating_pool(population, parent_pool_size)
          children = crossover(parents, offspring_size, crossover_operators)
-         children = mutate(children, bounds, MUTATION_PROBABILITY, mutation_operators)
+         children = mutate(children, MUTATION_PROBABILITY, mutation_operators)
          children = apply_constraints(children, bounds)
          population = children + parents
          rng.shuffle(population)

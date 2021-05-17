@@ -16,22 +16,21 @@ def target_function(parameters):
    net = SnakeNet()
    net.set_weights(parameters)
 
-   pts, mvs, avg_moves = play(
+   points, moves, avg_moves = play(
          display=False,
-         # step_time=0.1,
          collision=True,
          moves_to_lose=100,
          net=net
    )
 
-   cost = cost_function(avg_points, avg_moves)
+   cost = fitness(points, moves)
 
-   return cost, pts
+   return cost, points
 
-def cost_function(points, moves):
+def fitness(points, moves):
    # minus sign for minimization
    result = moves + 2 ** points + (points ** 2.1) * 500 - (((0.25 * moves) ** 1.3) * (points ** 1.2))
-   return -1 * result
+   return min(result, 0)
    # result = - points * points * math.exp(points) \
    #          - moves + points * math.sqrt(moves)
    # result = - math.exp(points) # lets just see points, roulette wont be so hard on priority
@@ -48,47 +47,32 @@ if __name__ == "__main__":
    crossover_operators = [
       xso.single_point_crossover(),
       xso.gamma_weighted_crossover(tau=100),
-      # xso.neural_crossover(net_shape),
-      # xso.identity_crossover(),
-      # xso.neural_layer_crossover(net_shape),
-      # xso.average_crossover(ratio=0.9),
-      # xso.average_crossover(ratio=0.01),
-      # xso.shuffle_crossover(mixing_rate=0.5),
-      # xso.shuffle_crossover(mixing_rate=0.5),
+      # xso.identity_crossover()
    ]
 
    mutation_operators = [
-      mo.gauss_mutate(mu=0, sigma=0.2),
-      # mo.univariate_mutate(mu=0, sigma=1),
-      # mo.gauss_rate_mutate(0.1),
-      # mo.spike_mutate(bounds=Bounds(min=-1, max=1)),
-      # mo.null_mutate(),
-      # mo.identity_mutate(),
-      # mo.gauss_mutate(mu=0, sigma=0.2),
-      # mo.gauss_mutate(mu=0, sigma=0.2),
-      # mo.gauss_mutate(mu=0, sigma=0.1),
-      # mo.gauss_mutate(mu=0, sigma=0.1),
-      # mo.negate_mutate(),
+      # mo.identity_mutate()
+      mo.gauss_mutate(mu=0, scale=0.2),
    ]
    
    best_snake = evolution_optimise(
       target_function,
-      dimensions,
+      net_shape,
       crossover_operators=crossover_operators,
       mutation_operators=mutation_operators,
-      population_size=200,
-      generations=500,
+      population_size=1500,
+      generations=100000,
       should_load_population=False,
-      load_directory='population_2021_01_09',
-      should_save_population=True,
-      save_directory='population_2021_01_09',
+      load_directory='',
+      should_save_population=False,
+      save_directory='',
       workers=15,
-      allowed_seconds= 60 * 60 * 8
+      allowed_seconds= 60 * 60 * 1
    )
 
    cost, pos = best_snake.cost, best_snake.gene
 
    print("BEST COST: {}".format(cost))
-   net.apply_parameters(pos)
+   net.set_weights(pos)
    net.save_weights('./my_model/best_weights.json')
 

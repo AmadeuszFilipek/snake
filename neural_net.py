@@ -11,7 +11,7 @@ def alternate(i):
         yield(i.__next__(), i.__next__())
 
 def relu(x):
-   return x * (x > 0)
+   return np.maximum(0, x)
 
 def sigmoid(x):
    return 1 / (1 + np.exp(-x))
@@ -60,9 +60,9 @@ class SnakeNet:
 
    def __init__(self):
       # shapes: [(32, 20), (20,), (20, 12), (12,), (12, 4), (4,)]
-      layer_1      = {'activation':'relu', 'neurons': 20, 'weights': np.ones((32,20)), 'bias': np.ones(20,)}
-      layer_2      = {'activation':'relu', 'neurons': 12, 'weights': np.ones((20,12)), 'bias': np.ones(12,)}
-      output_layer = {'activation':'softmax', 'neurons': 4, 'weights': np.ones((12,4)), 'bias': np.ones(4,)}
+      layer_1      = {'activation':'relu', 'neurons': 20, 'weights': np.ones((20, 32)), 'bias': np.ones((20, 1))}
+      layer_2      = {'activation':'relu', 'neurons': 12, 'weights': np.ones((12, 20)), 'bias': np.ones((12, 1))}
+      output_layer = {'activation':'sigmoid', 'neurons': 4, 'weights': np.ones((4, 12)), 'bias': np.ones((4, 1))}
 
       self.layers = [layer_1, layer_2, output_layer]
 
@@ -73,7 +73,7 @@ class SnakeNet:
          weights_matrix = layer['weights']
          bias_vector = layer['bias']
          activation_function = NAME_TO_FUNCTION[layer['activation']]
-         aggregated_signal = np.dot(propagated_signal, weights_matrix) + bias_vector
+         aggregated_signal = np.dot(weights_matrix, propagated_signal) + bias_vector
          propagated_signal = activation_function(aggregated_signal)
 
       return propagated_signal
